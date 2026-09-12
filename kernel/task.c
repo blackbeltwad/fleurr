@@ -16,37 +16,49 @@
 fleurr_status_t task_create_static(task_handle_t *out, void (*entry)(void *),
                                    uint8_t priority, void *arg,
                                    task_static_t *storage) {
+
   task_t *this_task = (task_t *)(storage);
   *out = this_task;
   this_task->stack_pointer = &this_task->stack[MAX_SIZE - 1];
   this_task->stack[0] = 0xFF;
-
-  port_init_stack_frame(&this_task->stack_pointer, entry, arg);
-  fill_task(this_task);
 
   this_task->priority = priority;
   this_task->base_priority = priority;
   this_task->state = TASK_READY;
   this_task->task_arg = arg;
 
+  port_init_stack_frame(&this_task->stack_pointer, entry, arg);
+  append_ready_task(this_task);
+
   return FLEURR_OK;
 }
-
 void task_yield() { port_force_context_switch(); }
 
-void task_block(task_handle_t task) { task->state = TASK_BLOCKED; }
+void task_block(task_handle_t task) {
+  remove_ready_task(task);
+  task->state = TASK_BLOCKED;
+}
 
-void task_unblock(task_handle_t task) { task->state = TASK_READY; }
+void task_unblock(task_handle_t task) {
+  task->state = TASK_READY;
+  append_ready_task(task);
+}
 
 void task_sleep(uint32_t time_ms) {
-  uint8_t old_state = port_enter_critcal();
-  task_t *this_task = get_current_task();
+  uint8_t old_state = port_enter_critical();
+  task_handle_t this_task = get_current_task();
+  this_task->state = TASK_SLEEPING;
   this_task->sleep_remaining = time_ms;
-  port_exit_crital(old_state);
+  sleep_list_append(this_task);
+  port_exit_critical(old_state);
+  port_force_context_switch();
 }
 
 void set_priority(task_handle_t task, uint8_t priority) {
-  uint8_t old_state = port_enter_critcal();
+  uint8_t old_state = port_enter_critical();
   task->priority = priority;
-  port_exit_crital(old_state);
+  port_exit_critical(old_state);
 }
+
+uint8_t fleurr_enter_critical() { return port_enter_critical(); }
+void fleurr_exit_critical(uint8_t old_state) { port_exit_critical(old_state); }

@@ -3,12 +3,12 @@ TARGET ?= avr
 BUILD_DIR = build
 
 ifeq ($(TARGET), avr)
-CC       = avr-gcc
-MCU      = atmega328p
-F_CPU    = 16000000UL
-CFLAGS   = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -O0 -g3 -Wall -Wextra -std=gnu11
-INCLUDES = -Iinclude -Ikernel -Iarch/avr/atmega328p
-ARCH_DIR = arch/avr/atmega328p
+CC        = avr-gcc
+MCU       = atmega328p
+F_CPU     = 16000000UL
+CFLAGS    = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -O0 -g3 -Wall -Wextra -std=gnu11
+INCLUDES  = -Iinclude -Ikernel -Iarch/avr/atmega328p
+ARCH_DIR  = arch/avr/atmega328p
 EXAMPLE_DIR = examples/avr_led_blink
 SRCS = $(wildcard kernel/*.c) $(wildcard $(ARCH_DIR)/*.c) $(wildcard $(ARCH_DIR)/*.S) $(wildcard $(EXAMPLE_DIR)/*.c)
 OUT = $(BUILD_DIR)/fleurr_avr.elf
@@ -18,14 +18,14 @@ BAUD = 115200
 GDB_PORT = 1234
 
 else ifeq ($(TARGET), cortex_m7)
-CC       = arm-none-eabi-gcc
-GDB      = arm-none-eabi-gdb
-OBJCOPY  = arm-none-eabi-objcopy
+CC        = arm-none-eabi-gcc
+GDB       = arm-none-eabi-gdb
+OBJCOPY   = arm-none-eabi-objcopy
 MCU_FLAGS = -mcpu=cortex-m7 -mthumb -mfloat-abi=hard -mfpu=fpv5-d16
-CFLAGS   = $(MCU_FLAGS) -O0 -g3 -Wall -Wextra -std=gnu11
-LDFLAGS  = $(MCU_FLAGS) -T arch/cortex_m7/nucleo_f767zi/linker.ld -nostdlib
-INCLUDES = -Iinclude -Ikernel -Iarch/cortex_m7/nucleo_f767zi
-ARCH_DIR = arch/cortex_m7/nucleo_f767zi
+CFLAGS    = $(MCU_FLAGS) -O0 -g3 -Wall -Wextra -std=gnu11
+LDFLAGS   = $(MCU_FLAGS) -T arch/cortex_m7/nucleo_f767zi/linker.ld -nostdlib
+INCLUDES  = -Iinclude -Ikernel -Iarch/cortex_m7/nucleo_f767zi
+ARCH_DIR  = arch/cortex_m7/nucleo_f767zi
 EXAMPLE_DIR = examples/cortex_m7_led_blink
 SRCS = $(wildcard kernel/*.c) $(wildcard $(ARCH_DIR)/*.c) $(wildcard $(ARCH_DIR)/*.S) $(wildcard $(EXAMPLE_DIR)/*.c)
 OUT = $(BUILD_DIR)/fleurr_m7.elf
@@ -70,7 +70,7 @@ else ifeq ($(TARGET), cortex_m7)
 	$(GDB) $(OUT) \
 		-ex "target remote localhost:$(GDB_PORT)" \
 		-ex "monitor reset halt" \
-		-ex "load" 
+		-ex "load"
 endif
 
 clean:

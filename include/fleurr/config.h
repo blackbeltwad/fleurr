@@ -3,8 +3,8 @@
 
 // User-tunable, compile-time configuration.
 
-#ifndef MAX_STACKS
-#define MAX_STACKS 8
+#ifndef NUM_OF_PRIORITY
+#define NUM_OF_PRIORITY 32
 #endif
 
 #ifndef MAX_SIZE

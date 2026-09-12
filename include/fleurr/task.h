@@ -21,6 +21,8 @@ fleurr_status_t task_create_static(task_handle_t *out, void (*entry)(void *),
                                    uint8_t priority, void *arg,
                                    task_static_t *storage);
 
+uint8_t fleurr_enter_critical();
+void fleurr_exit_critical(uint8_t oldstate);
 void task_yield(void);
 void task_block(task_handle_t task);
 void task_unblock(task_handle_t task);

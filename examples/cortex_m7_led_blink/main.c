@@ -46,13 +46,13 @@ int main(void) {
 
 void red_led(void *arg) {
   while (1) {
-    set_only_pin(4); // PD5
+    set_only_pin(4);
   }
 }
 
 void white_led(void *arg) {
   while (1) {
-    set_only_pin(6); // PD4
+    set_only_pin(6);
   }
 }
 

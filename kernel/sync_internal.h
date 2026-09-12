@@ -10,14 +10,13 @@
 
 struct mutex {
   struct task *owner;
-  struct task *block_list[MAX_STACKS];
-  uint8_t block_index;
+  struct task *block_head;
+  struct task *block_tail;
   mutex_protocol_t protocol;
   uint8_t ceiling_priority; // only meaningful if protocol == PROTOCOL_CEILING
 };
 
 struct semaphore {
-  // TODO: not yet implemented
   uint8_t count;
 };
 

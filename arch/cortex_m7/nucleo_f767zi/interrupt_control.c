@@ -2,7 +2,7 @@
 #include "port.h"
 #include <stdint.h>
 
-uint8_t port_enter_critcal() {
+uint8_t port_enter_critical() {
   uint8_t old_state = 0;
   __asm__ volatile("mrs %0, basepri \n"
                    "msr basepri, %1 \n"
@@ -13,7 +13,7 @@ uint8_t port_enter_critcal() {
   return old_state;
 }
 
-void port_exit_crital(uint8_t old_state) {
+void port_exit_critical(uint8_t old_state) {
   __asm__ volatile("msr basepri, %0 \n"
                    "isb \n"
                    :

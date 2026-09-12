@@ -1,10 +1,9 @@
 // hey lol
 .text
-#include <avr/io.h>
-.global TIMER1_COMPA_vect
+.global __vector_11
 .extern store_and_pop_stack_pointer
 .extern update_sleep_timer
-TIMER1_COMPA_vect:
+__vector_11:
   push R0
   push R1
   push R2

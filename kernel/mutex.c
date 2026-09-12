@@ -1,8 +1,3 @@
-#include "fleurr/status.h"
-#include "fleurr/sync.h"
-#include "sync_internal.h"
-#include "task_internal.h"
-#include <stddef.h>
 
 // TODO: move existing lock_mutex / unlock_mutex bodies here, adapted to:
 //   - return fleurr_status_t

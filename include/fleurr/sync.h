@@ -11,8 +11,8 @@ typedef struct mutex
     mutex_t; // opaque — real definition in kernel/sync_internal.h
 typedef mutex_t *mutex_handle_t;
 
-#define MUTEX_STATIC_SIZE                                                      \
-  32 // placeholder — update once struct mutex is finalized
+#define MUTEX_STATIC_SIZE 15
+
 typedef struct {
   uint8_t _reserved[MUTEX_STATIC_SIZE];
 } mutex_static_t;

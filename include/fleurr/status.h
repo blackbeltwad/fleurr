@@ -6,6 +6,7 @@ typedef enum {
   FLEURR_ERR_NOMEM,
   FLEURR_ERR_INVALID_ARG,
   FLEURR_ERR_LIMIT_REACHED,
+  FLEURR_MUTEX_IN_USE,
 } fleurr_status_t;
 
 #endif // FLEURR_STATUS_H

@@ -13,6 +13,8 @@ fleurr_status_t sem_create_static(sem_handle_t *out, uint8_t initial_count,
   sem_handle_t this_sem = (sem_handle_t)(storage);
   *out = this_sem;
   this_sem->count = initial_count;
+  this_sem->wait_head = NULL;
+  this_sem->wait_tail = NULL;
   return FLEURR_OK;
 }
 
@@ -28,13 +30,14 @@ fleurr_status_t fleurr_sem_signal(sem_handle_t this_sem) {
     }
     current->next = NULL;
     current->prev = NULL;
+    current->state = TASK_READY;
     append_ready_task(current);
   } else {
     this_sem->count += 1;
   }
 
-  port_exit_critical(old_state);
   port_force_context_switch();
+  port_exit_critical(old_state);
   return FLEURR_OK;
 }
 
@@ -53,7 +56,6 @@ fleurr_status_t fleurr_sem_wait(sem_handle_t this_sem) {
     struct task *iter = this_sem->wait_head;
     struct task *prev = NULL;
 
-    // Slot it at the at Highest -> Lowest Priority
     while (iter != NULL && this_task->priority <= iter->priority) {
       prev = iter;
       iter = iter->next;
@@ -72,8 +74,9 @@ fleurr_status_t fleurr_sem_wait(sem_handle_t this_sem) {
     } else {
       prev->next = this_task;
     }
-    port_exit_critical(old_state);
+
     port_force_context_switch();
+    port_exit_critical(old_state);
     return FLEURR_OK;
   }
 }

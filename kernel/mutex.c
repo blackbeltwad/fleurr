@@ -56,8 +56,6 @@ fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex) {
     return FLEURR_MUTEX_IN_USE;
   }
 
-  // contended: block this task and insert into the wait list, highest priority
-  // first
   remove_ready_task(this_task);
   this_task->state = TASK_BLOCKED;
   this_task->blocked_on = mutex;
@@ -70,6 +68,7 @@ fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex) {
   }
   this_task->prev = prev;
   this_task->next = iter;
+
   if (prev != NULL) {
     prev->next = this_task;
   } else {
@@ -83,13 +82,11 @@ fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex) {
 
   if (mutex->protocol == PROTOCOL_INHERIT) {
     inheritor_protocol(mutex);
-  } else if (mutex->protocol == PROTOCOL_CEILING) {
-    // NOT IMPLEMENTED YET
   }
 
-  port_exit_critical(old_state);
   port_force_context_switch();
-  // this_task resumes here once it becomes owner
+  port_exit_critical(old_state);
+
   return FLEURR_OK;
 }
 
@@ -97,15 +94,22 @@ void inheritor_protocol(mutex_handle_t mutex) {
   task_handle_t waiter = get_current_task();
   task_handle_t owner = mutex->owner;
 
-  while (owner->priority < waiter->priority) {
+  while (owner != NULL && owner->priority < waiter->priority) {
     if (owner->state == TASK_READY) {
       remove_ready_task(owner);
       owner->priority = waiter->priority;
       append_ready_task(owner);
       break;
+    } else if (owner->state == TASK_RUNNING) {
+      owner->priority = waiter->priority;
+      break;
     } else if (owner->state == TASK_BLOCKED) {
       owner->priority = waiter->priority;
-      owner = owner->blocked_on->owner;
+      if (owner->blocked_on != NULL) {
+        owner = owner->blocked_on->owner;
+      } else {
+        break;
+      }
     } else {
       break;
     }
@@ -154,14 +158,13 @@ fleurr_status_t fleurr_mutex_unlock(mutex_handle_t mutex) {
     }
     next_owner->held_mutexes_head = mutex;
 
-    next_owner->state = TASK_READY;
     append_ready_task(next_owner);
   } else {
     mutex->owner = NULL;
   }
 
-  port_exit_critical(old_state);
   port_force_context_switch();
+  port_exit_critical(old_state);
   return FLEURR_OK;
 }
 

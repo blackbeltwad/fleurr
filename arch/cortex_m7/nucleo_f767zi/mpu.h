@@ -1,0 +1,12 @@
+#define MPU_TYPE (*(volatile uint32_t *)0xE000ED90)
+#define MPU_CTRL (*(volatile uint32_t *)0xE000ED94)
+#define MPU_RNR (*(volatile uint32_t *)0xE000ED98)
+#define MPU_RBAR (*(volatile uint32_t *)0xE000ED9C)
+#define MPU_RASR (*(volatile uint32_t *)0xE000EDA0)
+
+#define MPU_RBAR_A1 (*(volatile uint32_t *)0xE000EDA4)
+#define MPU_RASR_A1 (*(volatile uint32_t *)0xE000EDA8)
+#define MPU_RBAR_A2 (*(volatile uint32_t *)0xE000EDAC)
+#define MPU_RASR_A2 (*(volatile uint32_t *)0xE000EDB0)
+#define MPU_RBAR_A3 (*(volatile uint32_t *)0xE000EDB4)
+#define MPU_RASR_A3 (*(volatile uint32_t *)0xE000EDB8)

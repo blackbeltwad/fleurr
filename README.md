@@ -22,24 +22,29 @@ Really it comes down to two things:
 - Preemptive priority scheduling on a priority-bucketed ready queue: per-priority intrusive doubly-linked lists, bitmap + CLZ for O(1) highest-priority lookup, up to 32 priority levels
 - Separate sleep list, walked once per tick
 - Hand-written context switching at the register level
-- Mutexes with priority inheritance
-- AVR (ATmega328P) done, Cortex-M7 (NUCLEO-F767ZI) in progress
+- Mutexes with priority inheritance, with proper multi-mutex support (releasing one mutex falls back to the max of base priority and any remaining held-mutex boosts, not a flat reset)
+- Semaphores: no ownership, no inheritance, priority-ordered wait list, direct handoff on signal instead of bump-then-drain
+- Queue: ring buffer with separate send/receive wait lists, working
+- AVR (ATmega328P) done, Cortex-M7 (NUCLEO-F767ZI) context switching done, sync primitives being ported
 
 ## Platforms
 
 | Platform | Architecture | Status |
 |---|---|---|
-| ATmega328P | AVR | Scheduler, context switching, mutexes all working |
-| NUCLEO-F767ZI | ARM Cortex-M7 | Context switching working, rest of the port in progress |
+| ATmega328P | AVR | Scheduler, context switching, mutexes, semaphores, queues all working |
+| NUCLEO-F767ZI | ARM Cortex-M7 | Scheduler, context switching, mutexes, semaphores, queues all working |
 
 ## Recent Bugs
 
 - `task_create_static` was linking a task into its ready bucket before its priority was even set. Ended up in the wrong bucket off garbage data.
 - `__builtin_clz` on AVR quietly uses the 16-bit `__clzhi2` helper since AVR's `int` is 16 bits. Wrong results against a 32-bit bitmap. Switched to `__builtin_clzl`, which actually works on a 32-bit `long`.
 - Confirmed on hardware with GDB that AVR's `RETI` pops the return address low byte first, not high byte first like I assumed. Had to fix `port_init_stack_frame` for that.
+- Stack frame format mismatch between `port_init_stack_frame` and `port_start_first_task`: the first task started fine but any second or third task hit an incomplete fake frame on its first run and jumped to garbage. Fixed by rewriting both to share the same pop+reti restore path.
 - On the M7 port I never copied `.data` from its load address to its run address, and never zeroed `.bss`. Globals looked fine until they didn't. Anything relying on zero-init or an initial value from flash was just reading garbage RAM.
 
 Multi-task context switching now works on both AVR and Cortex-M7.
+
+Queue is now working: fixed the head/tail wraparound math, the byte-vs-item count mismatch, the NULL tail dereference on empty-list insert, the non-atomic wake-then-transfer on blocked send/receive, and wait-list nodes not getting fully cleaned up on pop.
 
 ## Roadmap
 
@@ -47,10 +52,9 @@ Multi-task context switching now works on both AVR and Cortex-M7.
 - ~~ARM context switching via SysTick and PendSV~~
 - ~~Runs on PSP from reset~~
 - ~~EXC_RETURN handled in the PendSV context switch~~
-- Priority scheduling (ported and expanded)
-- Mutexes with priority inheritance (ported and expanded)
-- Semaphores
-- Queues
+- ~~Mutexes with priority inheritance (ported and expanded)~~
+- ~~Semaphores~~
+- ~~Queues~~
 - Task delays
 - MPU-based task isolation
 - Error handling and timeouts
@@ -73,6 +77,13 @@ Timeline's flexible on these, depth matters more than speed:
 - Stack overflow detection (guard patterns or MPU guard regions)
 - Stack high-water-mark / usage profiling
 - Tickless idle / low-power mode
+
+### Planned Refactors
+Tracked in `FUTURECHANGES.md`:
+
+- Pull the stack array out of `task_t` into an external user-supplied buffer, same pattern as the queue's buffer
+- Sizing macros so users don't have to hand-compute queue capacity/item_size or stack sizing
+- Per-port static struct sizes instead of one shared size, since AVR and M7 `task_t` fields differ enough that a shared constant wastes space on one arch or the other
 
 ### Beyond the Kernel
 - Cache/DMA coherency on Cortex-M7

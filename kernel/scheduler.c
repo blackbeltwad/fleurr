@@ -148,7 +148,7 @@ void choose_ready_task(void) {
 }
 
 // CLZ is probably whats going to break on different architectures
-uint32_t CLZ(uint32_t bitmap) {
+uint32_t get_highest_priority_bit(uint32_t bitmap) {
   if (bitmap == 0) {
     return 32;
   }

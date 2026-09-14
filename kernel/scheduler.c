@@ -89,6 +89,7 @@ void append_ready_task(task_handle_t this_task) {
   uint32_t valid_bucket = this_task->priority;
   scheduler.ready_bitmap |= (1UL << valid_bucket);
   this_task->next = NULL;
+  this_task->state = TASK_READY;
 
   if (scheduler.heads[valid_bucket] == NULL) {
     scheduler.heads[valid_bucket] = this_task;
@@ -132,6 +133,7 @@ void choose_ready_task(void) {
   scheduler.current_task = chosen;
   scheduler.current_task->next = NULL;
   scheduler.current_task->prev = NULL;
+  scheduler.current_task->state = TASK_RUNNING;
 
   if (scheduler.tails[msb_bucket] == chosen) {
     scheduler.heads[msb_bucket] = NULL;

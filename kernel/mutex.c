@@ -34,7 +34,7 @@ fleurr_status_t mutex_create_static(mutex_handle_t *out,
   return FLEURR_OK;
 }
 
-fleurr_status_t mutex_lock(mutex_handle_t mutex) {
+fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex) {
   uint8_t old_state = port_enter_critical();
   task_handle_t this_task = get_current_task();
 
@@ -112,7 +112,7 @@ void inheritor_protocol(mutex_handle_t mutex) {
   }
 }
 
-fleurr_status_t mutex_unlock(mutex_handle_t mutex) {
+fleurr_status_t fleurr_mutex_unlock(mutex_handle_t mutex) {
   uint8_t old_state = port_enter_critical();
   task_handle_t this_task = get_current_task();
 

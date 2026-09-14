@@ -19,6 +19,8 @@ struct mutex {
 };
 
 struct semaphore {
+  struct task *wait_head;
+  struct task *wait_tail;
   uint8_t count;
 };
 

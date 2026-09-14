@@ -5,6 +5,7 @@
 // shipped alongside include/fleurr/*.h.
 
 #include "fleurr/config.h"
+#include "fleurr/sync.h"
 #include "fleurr/task.h"
 #include <stdint.h>
 
@@ -21,11 +22,12 @@ struct task {
   void *task_arg;
   struct task *next;
   struct task *prev;
+  mutex_handle_t blocked_on;
+  mutex_handle_t held_mutexes_head;
   uint32_t sleep_remaining;
   uint8_t priority;      // effective, scheduler-visible priority
   uint8_t base_priority; // real assigned priority, restored after a boost
   task_state_t state;
-  uint8_t owns_mutex;
   // TODO: generalize to a held-mutex list for
   // multi-mutex-per-task support (Cortex-M7 era)
 };

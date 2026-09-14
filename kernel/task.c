@@ -26,6 +26,7 @@ fleurr_status_t task_create_static(task_handle_t *out, void (*entry)(void *),
   this_task->base_priority = priority;
   this_task->state = TASK_READY;
   this_task->task_arg = arg;
+  this_task->blocked_on = NULL;
 
   port_init_stack_frame(&this_task->stack_pointer, entry, arg);
   append_ready_task(this_task);

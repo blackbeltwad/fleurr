@@ -17,10 +17,16 @@ int main(void) {
   task_handle_t task_a;
   task_handle_t task_b;
   task_handle_t task_c;
+  uint8_t a_buffer[256];
+  uint8_t b_buffer[256];
+  uint8_t c_buffer[256];
 
-  task_create_static(&task_a, &red_led, 1, NULL, &task_a_storage);
-  task_create_static(&task_b, &white_led, 1, NULL, &task_b_storage);
-  task_create_static(&task_c, &blue_led, 1, NULL, &task_c_storage);
+  task_create_static(&task_a, a_buffer, 256, &red_led, 1, NULL,
+                     &task_a_storage);
+  task_create_static(&task_b, b_buffer, 256, &white_led, 1, NULL,
+                     &task_b_storage);
+  task_create_static(&task_c, c_buffer, 256, &blue_led, 1, NULL,
+                     &task_c_storage);
   scheduler_start(200); // never returns
 }
 

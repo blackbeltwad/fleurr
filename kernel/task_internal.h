@@ -17,7 +17,7 @@ typedef enum {
 } task_state_t;
 
 struct task {
-  uint8_t stack[MAX_SIZE];
+  uint8_t *stack;
   uint8_t *stack_pointer;
   void *task_arg;
   struct task *next;

@@ -22,6 +22,8 @@ struct task {
   void *task_arg;
   struct task *next;
   struct task *prev;
+  uint32_t RBAR;
+  uint32_t RASR;
   mutex_handle_t blocked_on;
   mutex_handle_t held_mutexes_head;
   uint32_t sleep_remaining;

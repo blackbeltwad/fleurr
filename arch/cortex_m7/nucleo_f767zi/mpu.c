@@ -1,9 +1,12 @@
+#include "fleurr/task.h"
 #include "port.h"
 #include "task_internal.h"
 #include <math.h>
 #include <stdint.h>
 #define MPU_RBAR (*(volatile uint32_t *)0xE000ED9C)
 #define MPU_RASR (*(volatile uint32_t *)0xE000EDA0)
+#define MPU_TYPE (*(volatile uint32_t *)0xE000ED90)
+#define MPU_CTRL (*(volatile uint32_t *)0xE000ED94)
 
 // Were gonna default it to No Access
 // For the handling between during context switch, i think during the mpu switch
@@ -43,4 +46,14 @@ void port_mpu_configuration(task_handle_t this_task, size_t capacity) {
 
   this_task->RBAR = MPU_RBAR;
   this_task->RASR = MPU_RASR;
+}
+
+void port_mpu_swap() {
+  uint8_t oldstate = port_enter_critical();
+  MPU_CTRL &= ~(1 << 0);
+  struct task *this_task = get_current_task();
+  MPU_RBAR = this_task->RBAR;
+  MPU_RASR = this_task->RASR;
+  MPU_CTRL |= (1 << 0);
+  port_exit_critical(oldstate);
 }

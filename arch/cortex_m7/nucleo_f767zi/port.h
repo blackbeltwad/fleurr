@@ -10,6 +10,8 @@
 // kernel/scheduler.c free of #ifdefs for arch-specific behavior.
 #include "fleurr/task.h"
 #include <stdint.h>
+
+extern uint8_t global_mpu_value;
 void port_start_first_task(void);
 void port_timer_init(uint32_t interval_ms);
 void port_force_context_switch(void); // maps to existing task_yield() body

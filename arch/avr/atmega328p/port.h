@@ -8,6 +8,7 @@
 
 #include "task_internal.h"
 #include <stdint.h>
+
 void port_start_first_task(void);
 void port_timer_init(uint32_t interval_us);
 void port_force_context_switch(void); // maps to existing task_yield() body

@@ -10,7 +10,6 @@ PendSV_Handler:
     push {r4, lr}
 
     bl store_and_pop_stack_pointer
-    bl port_mpu_swap
 
     pop {r4, lr}
     ldmia r0!, {r4-r11}

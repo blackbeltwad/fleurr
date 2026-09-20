@@ -1,13 +1,11 @@
 ENTRY(Reset_Handler)
-
 MEMORY
 {
-    FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 2048K
-    DTCM  (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
-    PERIPHERAL (rwx) : ORIGIN = 0x40000000
-    PERIPHERALX (rwx) : ORIGIN = 0xA000000
+    FLASH       (rx)  : ORIGIN = 0x08000000, LENGTH = 2048K
+    DTCM        (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
+    PERIPHERAL  (rwx) : ORIGIN = 0x40000000, LENGTH = 512M
+    PERIPHERALX (rwx) : ORIGIN = 0x0A000000, LENGTH = 8K
 }
-
 /* Place MSP Stack at top of 128KB DTCM RAM for maximum CPU execution speed */
 _estack = ORIGIN(DTCM) + LENGTH(DTCM);
 _flash_start = ORIGIN(FLASH);

@@ -1,3 +1,4 @@
+#include "port.h"
 #include <stdint.h>
 #define MPU_TYPE (*(volatile uint32_t *)0xE000ED90)
 #define MPU_CTRL (*(volatile uint32_t *)0xE000ED94)
@@ -14,6 +15,7 @@ extern uint32_t _estack;
 void Default_Handler();
 
 extern uint32_t _sidata;
+uint8_t global_mpu_value = 0;
 extern uint32_t _sdata;
 extern uint32_t _edata;
 extern uint32_t _sbss;
@@ -34,20 +36,20 @@ void Reset_Handler(void) {
              (1UL << 17) |     // C = 1
              (1UL << 16) |     // B = 1 (WT Cacheable)
              ((REGION_SIZE_2MB_N - 1) << 1) | 1UL;
-
+  global_mpu_value++;
   /* Region 1: DTCM RAM - Normal, Non-Cacheable */
   MPU_RBAR = ((uint32_t)&_eorigin & ~((1UL << REGION_SIZE_128KB_N) - 1)) |
-             (1UL << 4) | 1;
+             (1UL << 4) | global_mpu_value;
   MPU_RASR = (1UL << 28) |     // XN = 1 (Execute Never)
              (0b011UL << 24) | // AP = RW Priv / RW Unpriv
              (0b001UL << 19) | // TEX = 001 (Normal Non-Cacheable)
              (0UL << 17) |     // C = 0
              (0UL << 16) |     // B = 0
              ((REGION_SIZE_128KB_N - 1) << 1) | 1UL;
-
+  global_mpu_value++;
   /* Region 2: Peripherals / IO - Shared Device */
   MPU_RBAR = ((uint32_t)&_porigin & ~((1UL << REGION_SIZE_512MB_N) - 1)) |
-             (1UL << 4) | 2;
+             (1UL << 4) | global_mpu_value;
   MPU_RASR = (1UL << 28) |     // XN = 1
              (0b011UL << 24) | // AP = RW Priv / RW Unpriv
              (0b000UL << 19) | // TEX = 000
@@ -55,10 +57,10 @@ void Reset_Handler(void) {
              (0UL << 17) |     // C = 0
              (1UL << 16) |     // B = 1 (Device)
              ((REGION_SIZE_512MB_N - 1) << 1) | 1UL;
-
+  global_mpu_value++;
   /* Region 3: FMC & QUADSPI Control - Shared Device */
   MPU_RBAR = ((uint32_t)&_pxorigin & ~((1UL << REGION_SIZE_8KB_N) - 1)) |
-             (1UL << 4) | 3;
+             (1UL << 4) | global_mpu_value;
   MPU_RASR = (1UL << 28) |     // XN = 1
              (0b011UL << 24) | // AP = RW Priv / RW Unpriv
              (0b000UL << 19) | // TEX = 000
@@ -66,6 +68,7 @@ void Reset_Handler(void) {
              (0UL << 17) |     // C = 0
              (1UL << 16) |     // B = 1
              ((REGION_SIZE_8KB_N - 1) << 1) | 1UL;
+  global_mpu_value++;
   // Copy .data section from Flash to RAM
   uint32_t *src = &_sidata;
   uint32_t *dst = &_sdata;

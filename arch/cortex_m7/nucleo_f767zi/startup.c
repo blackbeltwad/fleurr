@@ -86,6 +86,7 @@ void Reset_Handler(void) {
   __asm volatile("msr PSP, %0 \n"
                  "mrs r0, CONTROL \n"
                  "orr r0, r0, #2 \n"
+                 "orr r0, r0, #1"
                  "msr CONTROL, r0 \n"
                  "isb \n" ::"r"(0x2001FFA0)
                  : "r0");

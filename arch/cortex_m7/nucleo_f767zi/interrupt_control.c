@@ -1,8 +1,10 @@
 #include "fleurr/config.h"
 #include "port.h"
+#include "svc.h"
 #include <stdint.h>
 
 uint8_t port_enter_critical() {
+  SVC_Handler();
   uint8_t old_state = 0;
   __asm__ volatile("mrs %0, basepri \n"
                    "msr basepri, %1 \n"
@@ -19,4 +21,5 @@ void port_exit_critical(uint8_t old_state) {
                    :
                    : "r"(old_state)
                    : "memory");
+  port_restore_priv();
 }

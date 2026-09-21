@@ -30,6 +30,7 @@ struct task {
   uint8_t priority;      // effective, scheduler-visible priority
   uint8_t base_priority; // real assigned priority, restored after a boost
   task_state_t state;
+  uint8_t priv;
   // TODO: generalize to a held-mutex list for
   // multi-mutex-per-task support (Cortex-M7 era)
 };

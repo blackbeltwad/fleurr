@@ -9,6 +9,8 @@
 // Arch-specific interface that kernel/*.c calls into. Keeps
 // kernel/scheduler.c free of #ifdefs for arch-specific behavior.
 #include "fleurr/task.h"
+#include "svc.h"
+#include "task_internal.h"
 #include <stdint.h>
 
 extern uint8_t global_mpu_value;

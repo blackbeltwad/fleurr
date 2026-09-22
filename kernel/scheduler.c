@@ -34,6 +34,7 @@ void *store_and_pop_stack_pointer(void *stack_address) {
   }
 
   choose_ready_task();
+  port_apply_active_task_region(scheduler.current_task);
   return (void *)(scheduler.current_task->stack_pointer);
 }
 

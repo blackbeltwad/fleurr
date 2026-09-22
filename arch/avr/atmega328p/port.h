@@ -1,5 +1,6 @@
 #ifndef FLEURR_PORT_AVR_ATMEGA328P_H
 #define FLEURR_PORT_AVR_ATMEGA328P_H
+#include "fleurr/status.h"
 #include "fleurr/task.h"
 #define POP_SIZE 34
 #define ARG_SIZE 25
@@ -16,6 +17,7 @@ void port_init_stack_frame(uint8_t **stack_pointer, void (*entry)(void *),
                            void *arg);
 uint8_t port_enter_critical(void);
 void port_exit_critical(uint8_t old_state);
-void static inline port_mpu_configuration(task_handle_t this_task,
-                                          size_t capacity){};
+fleurr_status_t static inline port_mpu_configuration(task_handle_t this_task,
+                                                     size_t capacity){};
+void static inline port_apply_active_task_region(task_handle_t this_task){};
 #endif // FLEURR_PORT_AVR_ATMEGA328P_H

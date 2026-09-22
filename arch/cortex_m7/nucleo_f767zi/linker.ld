@@ -1,21 +1,25 @@
 ENTRY(Reset_Handler)
+
 MEMORY
 {
     FLASH       (rx)  : ORIGIN = 0x08000000, LENGTH = 2048K
     DTCM        (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
+    SRAM1       (rwx) : ORIGIN = 0x20020000, LENGTH = 368K
     PERIPHERAL  (rwx) : ORIGIN = 0x40000000, LENGTH = 512M
     PERIPHERALX (rwx) : ORIGIN = 0x0A000000, LENGTH = 8K
 }
-/* Place MSP Stack at top of 128KB DTCM RAM for maximum CPU execution speed */
+
+/* MSP Top at end of DTCM */
 _estack = ORIGIN(DTCM) + LENGTH(DTCM);
+
 _flash_start = ORIGIN(FLASH);
-_eorigin = ORIGIN(DTCM);
-_porigin = ORIGIN(PERIPHERAL);
-_pxorigin = ORIGIN(PERIPHERALX);
+_dtcm_start  = ORIGIN(DTCM);
+_sram1_start = ORIGIN(SRAM1);
+_porigin     = ORIGIN(PERIPHERAL);
+_pxorigin    = ORIGIN(PERIPHERALX);
 
 SECTIONS
 {
-    /* Vector Table placed at start of Flash */
     .isr_vector :
     {
         . = ALIGN(4);
@@ -23,18 +27,16 @@ SECTIONS
         . = ALIGN(4);
     } > FLASH
 
-    /* Program Code and Read-Only Constants */
     .text :
     {
         . = ALIGN(4);
         *(.text)
         *(.text*)
-        *(.glue_7)         /* glue arm to thumb code */
-        *(.glue_7t)        /* glue thumb to arm code */
+        *(.glue_7)
+        *(.glue_7t)
         *(.eh_frame)
-
         . = ALIGN(4);
-        _etext = .;        /* End of code in Flash */
+        _etext = .;
     } > FLASH
 
     .rodata :
@@ -45,29 +47,67 @@ SECTIONS
         . = ALIGN(4);
     } > FLASH
 
-    /* Symbol used by Reset_Handler to locate initial values in Flash */
+    /* DTCM KERNEL SPACE (PRIV RW ONLY) */
+
+    /* Initialized kernel data (TCBs, static mutexes/queues/semaphores) */
+    .dtcm_data :
+    {
+        . = ALIGN(4);
+        _sdtcm_data = .;
+        *(.dtcm_data)
+        *(.dtcm_data*)
+        . = ALIGN(4);
+        _edtcm_data = .;
+    } > DTCM AT> FLASH
+
+    _sidtcm_data = LOADADDR(.dtcm_data);
+
+    /* Zero-initialized kernel data */
+    .dtcm_bss (NOLOAD) :
+    {
+        . = ALIGN(4);
+        _sdtcm_bss = .;
+        *(.dtcm_bss)
+        *(.dtcm_bss*)
+        . = ALIGN(4);
+        _edtcm_bss = .;
+    } > DTCM
+
+
+    /* SRAM1: USER SPACE (UNPRIV ACCESSIBLE) */
+
     _sidata = LOADADDR(.data);
 
-    /* Initialized Globals: Placed in DTCM for maximum performance */
+    /* Global user variables */
     .data :
     {
         . = ALIGN(4);
-        _sdata = .;        /* Start of .data in RAM */
+        _sdata = .;
         *(.data)
         *(.data*)
         . = ALIGN(4);
-        _edata = .;        /* End of .data in RAM */
-    } > DTCM AT> FLASH
+        _edata = .;
+    } > SRAM1 AT> FLASH
 
-    /* Uninitialized Globals: Allocated in DTCM, cleared to 0 at boot */
+    /* Zero initialized user variables */
     .bss :
     {
         . = ALIGN(4);
-        _sbss = .;         /* Start of .bss in RAM */
+        _sbss = .;
         *(.bss)
         *(.bss*)
         *(COMMON)
         . = ALIGN(4);
-        _ebss = .;         /* End of .bss in RAM */
-    } > DTCM
+        _ebss = .;
+    } > SRAM1
+
+    /* Dedicated boot/default task PSP stack space in SRAM1 */
+    .user_stack (NOLOAD) :
+    {
+        . = ALIGN(8);
+        _suser_stack = .;
+        . = . + 0x1000; /* 4KB initial stack allocation */
+        . = ALIGN(8);
+        _euser_stack = .;
+    } > SRAM1
 }

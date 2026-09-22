@@ -8,6 +8,7 @@
 #define SYST_CALIB (*(volatile uint32_t *)0xE000E01C)
 
 void port_start_first_task() {
+  port_apply_active_task_region(get_current_task());
   uint8_t *stack_pointer = get_current_task()->stack_pointer;
 
   stack_pointer += INIT_POP;

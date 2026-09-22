@@ -20,9 +20,18 @@ void set_only_pin(uint8_t pin);
 #define GPIOD_MODER (*(volatile uint32_t *)(GPIOD_BASE + 0x00))
 #define GPIOD_ODR (*(volatile uint32_t *)(GPIOD_BASE + 0x14))
 
-static task_static_t task_a_storage;
-static task_static_t task_b_storage;
-static task_static_t task_c_storage;
+// in DTCM
+__attribute__((section(".dtcm_bss"))) static task_static_t task_a_storage;
+__attribute__((section(".dtcm_bss"))) static task_static_t task_b_storage;
+__attribute__((section(".dtcm_bss"))) static task_static_t task_c_storage;
+
+// Also in DTCM
+__attribute__((section(".dtcm_bss"),
+               aligned(256))) static uint8_t a_buffer[256];
+__attribute__((section(".dtcm_bss"),
+               aligned(256))) static uint8_t b_buffer[256];
+__attribute__((section(".dtcm_bss"),
+               aligned(256))) static uint8_t c_buffer[256];
 
 int main(void) {
 
@@ -34,10 +43,6 @@ int main(void) {
   task_handle_t task_a;
   task_handle_t task_b;
   task_handle_t task_c;
-
-  uint8_t a_buffer[256];
-  uint8_t b_buffer[256];
-  uint8_t c_buffer[256];
 
   task_create_static(&task_a, a_buffer, 256, &red_led, 1, NULL,
                      &task_a_storage);

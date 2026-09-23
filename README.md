@@ -41,7 +41,8 @@ Really it comes down to two things:
 - Confirmed on hardware with GDB that AVR's `RETI` pops the return address low byte first, not high byte first like I assumed. Had to fix `port_init_stack_frame` for that.
 - Stack frame format mismatch between `port_init_stack_frame` and `port_start_first_task`: the first task started fine but any second or third task hit an incomplete fake frame on its first run and jumped to garbage. Fixed by rewriting both to share the same pop+reti restore path.
 - On the M7 port I never copied `.data` from its load address to its run address, and never zeroed `.bss`. Globals looked fine until they didn't. Anything relying on zero-init or an initial value from flash was just reading garbage RAM.
-- M7 linker script had SRAM1's origin overlapping DTCM's address range. The MPU region built from it rounded down to a base that covered both, so the region meant to grant unprivileged access to `.data`/`.bss` was also granting unprivileged access to all of DTCM — TCBs, stacks, kernel objects. Fixed the origin and carved the overlap back out with the region's SRD (subregion disable) bits.
+- M7 linker script had SRAM1's origin overlapping DTCM's address range. The MPU region built from it rounded down to a base that covered both, so the region meant to grant unprivileged access to `.data`/`.bss` was also granting unprivileged access to all of DTCM: TCBs, stacks, kernel objects. Fixed the origin and carved the overlap back out with the region's SRD (subregion disable) bits.
+- `.dtcm_bss` is declared NOLOAD in the linker script but nothing ever actually zeroed it, unlike `.bss`. Every static object placed there (TCBs, the scheduler struct, task stacks) booted with whatever was already sitting in DTCM instead of a known state. Surfaced as `task->priv` reading garbage on boot and breaking `port_restore_priv`. Added a zero loop for `.dtcm_bss` in `Reset_Handler` next to the existing `.bss` one, and made `task_create_static` set `priv` explicitly instead of relying on zero-fill for that field.
 
 Multi-task context switching now works on both AVR and Cortex-M7.
 
@@ -57,7 +58,7 @@ Queue is now working: fixed the head/tail wraparound math, the byte-vs-item coun
 - ~~Semaphores~~
 - ~~Queues~~
 - Task delays
-- MPU-based task isolation (in progress — unprivileged tasks, sliding active-task region, SVC as the sole privilege boundary; see `ARCHITECTURE.md`)
+- MPU-based task isolation (in progress, unprivileged tasks, sliding active-task region, SVC as the sole privilege boundary; see `ARCHITECTURE.md`)
 - SVC syscall interface, and routing existing kernel helpers (`task_sleep`, `set_priority`, mutex/semaphore/queue ops) through it now that unprivileged tasks can't reach kernel state directly
 - Error handling and timeouts
 
@@ -83,7 +84,7 @@ Timeline's flexible on these, depth matters more than speed:
 ### Planned Refactors
 Tracked in `FUTURECHANGES.md`:
 
-- Pull the stack array out of `task_t` into an external user-supplied buffer, same pattern as the queue's buffer (done — now being replaced by a kernel-carved stack pool, see `FUTURECHANGES.md`)
+- Pull the stack array out of `task_t` into an external user-supplied buffer, same pattern as the queue's buffer (done, now being replaced by a kernel-carved stack pool, see `FUTURECHANGES.md`)
 - Sizing macros so users don't have to hand-compute queue capacity/item_size or stack sizing
 - Section-placement macros so kernel-private static storage can't silently land in the wrong memory region
 - Per-port static struct sizes instead of one shared size, since AVR and M7 `task_t` fields differ enough that a shared constant wastes space on one arch or the other

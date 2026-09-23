@@ -61,7 +61,7 @@ Five regions, indexed by MPU region number, four static and one that gets reprog
 
 Anything a task's handle points to that isn't meant to be a shared global (the TCB itself, task stacks, and once implemented, static mutex/semaphore/queue storage) must be placed in DTCM, not left to fall into default `.bss` (which resolves to SRAM1). This is not enforced by the kernel today. It's a per-call-site discipline requirement on whoever allocates static storage, which is exactly the kind of thing that's easy to get wrong silently: a forgotten section attribute compiles clean and just quietly defeats isolation for that object. Macros to close this gap are planned. See `FUTURECHANGES.md`.
 
-## St[118;1:3uatic vs. Dynamic Allocation
+## Static vs. Dynamic Allocation
 
 Because user code never sees real struct layout, static allocation can't hand the user a real `struct task` to declare on the stack or in `.bss`. They'd need the type definition to size it. Instead, the public header exposes a **sized-but-opaque** buffer type:
 

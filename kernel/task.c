@@ -29,7 +29,7 @@ fleurr_status_t task_create_static(task_handle_t *out, uint8_t *buffer,
   this_task->state = TASK_READY;
   this_task->task_arg = arg;
   this_task->blocked_on = NULL;
-
+  this_task->priv = 1; // unpriv
   port_init_stack_frame(&this_task->stack_pointer, entry, arg);
   fleurr_status_t mpu_status = port_mpu_configuration(this_task, capacity);
   if (mpu_status != FLEURR_OK) {

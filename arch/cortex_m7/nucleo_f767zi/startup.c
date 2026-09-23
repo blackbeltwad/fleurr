@@ -31,7 +31,8 @@ extern uint32_t _dtcm_start;
 extern uint32_t _sram1_start;
 extern uint32_t _porigin;
 extern uint32_t _pxorigin;
-
+extern uint32_t _sdtcm_bss;
+extern uint32_t _edtcm_bss;
 void raise_privilege(void);
 void drop_privilege(void);
 
@@ -88,6 +89,13 @@ void Reset_Handler(void) {
   /* zero .bss in SRAM1 */
   dst = &_sbss;
   while (dst < &_ebss) {
+    *dst++ = 0;
+  }
+
+  /* caught a bug here never zeroed dtcm.bss and did not initalized task->priv
+   * cause restore priv to break!*/
+  dst = &_sdtcm_bss;
+  while (dst < &_edtcm_bss) {
     *dst++ = 0;
   }
 

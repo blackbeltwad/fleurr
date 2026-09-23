@@ -94,7 +94,7 @@ Not written yet. Core mechanism needs to be solid first.
 `scheduler` is a private static inside the kernel's own source file. The
 struct itself (ready lists, bitmap, sleep list) is never exposed. Now that
 `scheduler` lives in DTCM, every caller of `get_current_task()` from task
-context h[118;1:3uas to go through SVC anyway (DTCM is privileged-only), so the
+context has to go through SVC anyway (DTCM is privileged-only), so the
 function-call indirection isn't buying isolation it wasn't already getting
 from the section placement.
 

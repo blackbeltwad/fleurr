@@ -34,7 +34,7 @@ Open decisions:
   guard alignment. Size classes bound waste and allow exact-fit regions.
 - Pool exhaustion: task_create returns a Fleur error enum instead of failing later.
 - Whether task delete returns the stack to the pool (needs a free strategy).
-- Pool placement: DTCM. Resolved by the privilege model — task stacks need to
+- Pool placement: DTCM. Resolved by the privilege model. Task stacks need to
   sit under the DTCM privileged-only background region so the sliding
   active-task MPU region (region 5) is the only thing that ever grants
   unprivileged write access to any of them. Still need to check which DMA
@@ -44,15 +44,15 @@ Open decisions:
 ## Section-placement macros (.dtcm_bss / .dtcm_data)
 
 Static kernel storage (TCBs, scheduler state, and later static mutex/semaphore/
-queue storage) must live in DTCM, not SRAM1 — see ARCHITECTURE.md's placement
+queue storage) must live in DTCM, not SRAM1. See ARCHITECTURE.md's placement
 rule. Right now this means every call site has to remember to write
 `__attribute__((section(".dtcm_bss")))` by hand, with zero compiler or runtime
-error if it's forgotten — it just silently compiles into `.bss` (SRAM1) instead,
+error if it's forgotten. It just silently compiles into `.bss` (SRAM1) instead,
 and that object is unprivileged-RW for every task instead of protected kernel
 state. This already bit the M7 port's own example `main.c` during MPU bring-up.
 
 Plan: wrap the section attribute in macros so it's structural instead of
-memorized —
+memorized:
 
 ```c
 DTCM_BSS(task_static_t, task_a_storage);
@@ -83,7 +83,7 @@ size is only given at task_create). The queue macro is unaffected.
 
 Both this and the DTCM placement macros above are ultimately the same kind of
 gap (a call site can silently get static allocation wrong), so these may end
-up as one combined macro rather than two — worth deciding once both are
+up as one combined macro rather than two. Worth deciding once both are
 actually being written.
 
 Not written yet. Core mechanism needs to be solid first.
@@ -91,24 +91,24 @@ Not written yet. Core mechanism needs to be solid first.
 ## get_current_task() vs. a direct extern pointer
 
 `get_current_task()` currently returns `scheduler.current_task`, where
-`scheduler` is a private static inside the kernel's own source file — the
+`scheduler` is a private static inside the kernel's own source file. The
 struct itself (ready lists, bitmap, sleep list) is never exposed. Now that
 `scheduler` lives in DTCM, every caller of `get_current_task()` from task
-context has to go through SVC anyway (DTCM is privileged-only), so the
+context h[118;1:3uas to go through SVC anyway (DTCM is privileged-only), so the
 function-call indirection isn't buying isolation it wasn't already getting
 from the section placement.
 
-Considering replacing it with a single exported pointer —
+Considering replacing it with a single exported pointer:
 
 ```c
 extern task_handle_t *fleurr_current_task_ptr;
 ```
 
-— written only by the scheduler, read by inline helpers. Narrower surface
+Written only by the scheduler, read by inline helpers. Narrower surface
 than exposing the whole `struct scheduler` (still just the one pointer, nothing
 about ready-list internals), and lets call sites like the MPU/priv helpers
 become `static inline` without needing the scheduler's internals visible in a
-header. Not yet decided against keeping it a real function — mainly a
+header. Not yet decided against keeping it a real function. Mainly a
 question of whether the inlining is worth the header-visibility tradeoff once
 SVC-wrapping makes most call sites Handler-mode-only anyway.
 
@@ -122,10 +122,10 @@ number in r0 (or similar), handler branches on it. Required for:
   pointer validation on every call since the handler runs privileged.
 - Routing existing kernel helpers (task_sleep, set_priority, mutex/semaphore/
   queue operations) through SVC instead of calling DTCM-resident kernel state
-  directly from task context — currently these only "work" from unprivileged
+  directly from task context. Currently these only "work" from unprivileged
   code because the DTCM privilege boundary isn't fully closed yet (scheduler
   moved to DTCM, but the helpers that read it haven't been rewritten to go
-  through SVC). This is a correctness gap, not a someday-feature: those calls
+  through SVC). This is a correctness gap, not a someday-feature. Those calls
   will start faulting from unprivileged task code as soon as the DTCM move is
   live, until they're wrapped.
 

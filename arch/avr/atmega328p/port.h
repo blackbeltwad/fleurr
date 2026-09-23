@@ -20,4 +20,8 @@ void port_exit_critical(uint8_t old_state);
 fleurr_status_t static inline port_mpu_configuration(task_handle_t this_task,
                                                      size_t capacity){};
 void static inline port_apply_active_task_region(task_handle_t this_task){};
+static inline void port_restore_priv() {};
+static inline void port_drop_priv() {};
+static inline void port_raise_priv() {};
+#
 #endif // FLEURR_PORT_AVR_ATMEGA328P_H

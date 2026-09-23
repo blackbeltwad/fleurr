@@ -20,7 +20,8 @@ void set_only_pin(uint8_t pin);
 #define GPIOD_MODER (*(volatile uint32_t *)(GPIOD_BASE + 0x00))
 #define GPIOD_ODR (*(volatile uint32_t *)(GPIOD_BASE + 0x14))
 
-// in DTCM
+// IM going to need do put this in like MACROS or something this is way too
+// messy in DTCM
 __attribute__((section(".dtcm_bss"))) static task_static_t task_a_storage;
 __attribute__((section(".dtcm_bss"))) static task_static_t task_b_storage;
 __attribute__((section(".dtcm_bss"))) static task_static_t task_c_storage;

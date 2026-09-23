@@ -1,7 +1,5 @@
 #ifndef FLEURR_PORT_CORTEX_M7_NUCLEO_F767ZI_H
 #define FLEURR_PORT_CORTEX_M7_NUCLEO_F767ZI_H
-#include "fleurr/status.h"
-#include "port.h"
 #define POP_SIZE 32
 #define WORD_SIZE 4
 #define CALLER_SAVED 28
@@ -26,4 +24,7 @@ void port_exit_critical(uint8_t old_state);
 fleurr_status_t port_mpu_configuration(task_handle_t this_task,
                                        size_t capacity);
 void port_apply_active_task_region(task_handle_t this_task);
+void port_restore_priv();
+void port_drop_priv();
+void port_raise_priv();
 #endif // FLEURR_PORT_CORTEX_M7_NUCLEO_F767ZI_H

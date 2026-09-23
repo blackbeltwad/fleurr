@@ -15,6 +15,8 @@ void sleep_list_append(task_handle_t this_task);
 void sleep_list_remove(task_handle_t this_task);
 void remove_ready_task(task_handle_t this_task);
 
+// The scheduler control block actually runs in SRAM1 and not DTCM which is NO
+// ACCESS
 static struct scheduler scheduler = {.heads = {0},
                                      .tails = {0},
                                      .current_task = NULL,
@@ -27,6 +29,10 @@ void *store_and_pop_stack_pointer(void *stack_address) {
   if (scheduler.current_task != NULL) {
     scheduler.current_task->stack_pointer = stack_address;
 
+    uint32_t control;
+    __asm volatile("mrs %0, control" : "=r"(control));
+    scheduler.current_task->priv = control & 0x1UL;
+
     // Can only be readded if running
     if (scheduler.current_task->state == TASK_RUNNING) {
       append_ready_task(scheduler.current_task);
@@ -35,6 +41,7 @@ void *store_and_pop_stack_pointer(void *stack_address) {
 
   choose_ready_task();
   port_apply_active_task_region(scheduler.current_task);
+  // port_restore_priv();
   return (void *)(scheduler.current_task->stack_pointer);
 }
 

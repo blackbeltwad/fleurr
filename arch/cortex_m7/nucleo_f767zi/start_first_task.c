@@ -17,5 +17,10 @@ void port_start_first_task() {
   void (*start_function)(void *) = (void *)function_address;
 
   SYST_CSR |= (1 << 0);
+  __asm volatile("mrs r0, control \n\t"
+                 "bic r0, r0, #1 \n\t"
+                 "msr control, r0 \n\t"
+                 "isb \n\t" ::
+                     : "r0");
   start_function(get_current_task()->task_arg);
 }

@@ -36,36 +36,36 @@ void raise_privilege(void);
 void drop_privilege(void);
 
 void Reset_Handler(void) {
-  /* Region 0: Flash RO Priv / RO Unpriv, executable (XN=0) */
+  // Region 0: Flash RO Priv / RO Unpriv, executable (XN=0)
   MPU_RNR = 0;
   MPU_RBAR = ((uint32_t)&_flash_start & ~((1UL << REGION_SIZE_2MB_N) - 1));
   MPU_RASR = (0UL << 28) | (0b110UL << 24) | (0b000UL << 19) | (1UL << 17) |
              (1UL << 16) | ((REGION_SIZE_2MB_N - 1) << 1) | 1UL;
 
-  /* Region 1: DTCM Priv RW, Unpriv NO ACCESS. Background for all kernel
-   * state (TCBs, stacks, mutexes/queues/semaphores). Non-executable. */
+  // Region 1: DTCM Priv RW, Unpriv NO ACCESS. Background for all kernel
+  // state (TCBs, stacks, mutexes/queues/semaphores). Non-executable.
   MPU_RNR = 1;
   MPU_RBAR = ((uint32_t)&_dtcm_start & ~((1UL << REGION_SIZE_128KB_N) - 1));
   MPU_RASR = (1UL << 28) | (0b001UL << 24) | (0b001UL << 19) | (0UL << 17) |
              (0UL << 16) | ((REGION_SIZE_128KB_N - 1) << 1) | 1UL;
 
-  /* Region 2: SRAM1 (.data / .bss) RW Priv / RW Unpriv, non-executable.
-   * SRD bits exclude the first 128KB (DTCM) from this region's grant --
-   * see SRAM1_SRD_DISABLE_DTCM_OVERLAP comment above. */
+  // Region 2: SRAM1 (.data / .bss) RW Priv / RW Unpriv, non-executable.
+  //  SRD bits exclude the first 128KB (DTCM) from this region's grant
+
   MPU_RNR = 2;
   MPU_RBAR = ((uint32_t)&_sram1_start & ~((1UL << REGION_SIZE_512KB_N) - 1));
   MPU_RASR = (1UL << 28) | (0b011UL << 24) | (0b001UL << 19) | (0UL << 17) |
              (0UL << 16) | SRAM1_SRD_DISABLE_DTCM_OVERLAP |
              ((REGION_SIZE_512KB_N - 1) << 1) | 1UL;
 
-  /* Region 3: Periphs / MMIO. Priv RW, Unpriv NO ACCESS -- SVC is the
-   * only kernel boundary, so unprivileged code has no direct MMIO path. */
+  // Region 3: Periphs / MMIO. Priv RW, Unpriv NO ACCESS  SVC is the
+  // only kernel boundary, so unprivileged code has no direct MMIO path.
   MPU_RNR = 3;
   MPU_RBAR = ((uint32_t)&_porigin & ~((1UL << REGION_SIZE_512MB_N) - 1));
   MPU_RASR = (1UL << 28) | (0b001UL << 24) | (0b000UL << 19) | (1UL << 18) |
              (0UL << 17) | (1UL << 16) | ((REGION_SIZE_512MB_N - 1) << 1) | 1UL;
 
-  /* Region 4: FMC & QUADSPI. Extended Periphs/ MMIO*/
+  // Region 4: FMC & QUADSPI. Extended Periphs/ MMIO
   MPU_RNR = 4;
   MPU_RBAR = ((uint32_t)&_pxorigin & ~((1UL << REGION_SIZE_8KB_N) - 1));
   MPU_RASR = (1UL << 28) | (0b001UL << 24) | (0b000UL << 19) | (1UL << 18) |

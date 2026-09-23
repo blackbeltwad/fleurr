@@ -16,11 +16,12 @@ void port_start_first_task() {
   uint32_t function_address = *(uint32_t *)stack_pointer;
   void (*start_function)(void *) = (void *)function_address;
 
+  void *arg = get_current_task()->task_arg;
   SYST_CSR |= (1 << 0);
   __asm volatile("mrs r0, control \n\t"
-                 "bic r0, r0, #1 \n\t"
+                 "orr r0, r0, #1 \n\t"
                  "msr control, r0 \n\t"
                  "isb \n\t" ::
                      : "r0");
-  start_function(get_current_task()->task_arg);
+  start_function(arg);
 }

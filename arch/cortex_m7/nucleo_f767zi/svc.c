@@ -3,7 +3,7 @@
 #include "port.h"
 #include "scheduler_internal.h"
 
-void port_raise_priv(void) {
+void fleurr_raise_priv(void) {
   __asm__ volatile("svc #0");
   task_handle_t this_task = get_current_task();
   this_task->priv = 0;
@@ -17,7 +17,7 @@ void port_restore_priv(void) {
   __asm__ volatile("msr control, %0 \n\t isb" ::"r"(control));
 }
 
-void port_drop_priv(void) {
+void fleurr_drop_priv(void) {
   task_handle_t this_task = get_current_task();
   this_task->priv = 1;
   __asm__ volatile("mrs r0, control \n\t"

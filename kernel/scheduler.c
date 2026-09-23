@@ -41,7 +41,7 @@ void *store_and_pop_stack_pointer(void *stack_address) {
 
   choose_ready_task();
   port_apply_active_task_region(scheduler.current_task);
-  // port_restore_priv();
+  port_restore_priv();
   return (void *)(scheduler.current_task->stack_pointer);
 }
 

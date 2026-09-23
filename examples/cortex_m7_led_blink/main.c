@@ -1,5 +1,6 @@
 #include "fleurr/scheduler.h"
 #include "fleurr/task.h"
+#include "port.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -76,6 +77,8 @@ void blue_led(void *arg) {
 }
 
 void set_only_pin(uint8_t pin) {
+  fleurr_raise_priv();
   uint32_t mask = (1U << 4) | (1U << 5) | (1U << 6);
   GPIOD_ODR = (GPIOD_ODR & ~mask) | (1U << pin);
+  fleurr_drop_priv();
 }

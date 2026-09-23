@@ -1,4 +1,4 @@
-# Fleurr-OS
+# Fleurr
 
 A bare-metal RTOS kernel, AVR up to Cortex-M7. Zero-cost abstraction, fast primitives, no shortcuts.
 
@@ -32,7 +32,7 @@ Really it comes down to two things:
 | Platform | Architecture | Status |
 |---|---|---|
 | ATmega328P | AVR | Scheduler, context switching, mutexes, semaphores, queues all working |
-| NUCLEO-F767ZI | ARM Cortex-M7 | Scheduler, context switching, mutexes, semaphores, queues all working |
+| NUCLEO-F767ZI | ARM Cortex-M7 | Scheduler, context switching, mutexes, semaphores, queues all working; MPU-based unprivileged task isolation in progress |
 
 ## Recent Bugs
 
@@ -41,6 +41,7 @@ Really it comes down to two things:
 - Confirmed on hardware with GDB that AVR's `RETI` pops the return address low byte first, not high byte first like I assumed. Had to fix `port_init_stack_frame` for that.
 - Stack frame format mismatch between `port_init_stack_frame` and `port_start_first_task`: the first task started fine but any second or third task hit an incomplete fake frame on its first run and jumped to garbage. Fixed by rewriting both to share the same pop+reti restore path.
 - On the M7 port I never copied `.data` from its load address to its run address, and never zeroed `.bss`. Globals looked fine until they didn't. Anything relying on zero-init or an initial value from flash was just reading garbage RAM.
+- M7 linker script had SRAM1's origin overlapping DTCM's address range. The MPU region built from it rounded down to a base that covered both, so the region meant to grant unprivileged access to `.data`/`.bss` was also granting unprivileged access to all of DTCM — TCBs, stacks, kernel objects. Fixed the origin and carved the overlap back out with the region's SRD (subregion disable) bits.
 
 Multi-task context switching now works on both AVR and Cortex-M7.
 
@@ -56,7 +57,8 @@ Queue is now working: fixed the head/tail wraparound math, the byte-vs-item coun
 - ~~Semaphores~~
 - ~~Queues~~
 - Task delays
-- MPU-based task isolation
+- MPU-based task isolation (in progress — unprivileged tasks, sliding active-task region, SVC as the sole privilege boundary; see `ARCHITECTURE.md`)
+- SVC syscall interface, and routing existing kernel helpers (`task_sleep`, `set_priority`, mutex/semaphore/queue ops) through it now that unprivileged tasks can't reach kernel state directly
 - Error handling and timeouts
 
 ### Drivers (interrupt-driven, not polling)
@@ -81,8 +83,9 @@ Timeline's flexible on these, depth matters more than speed:
 ### Planned Refactors
 Tracked in `FUTURECHANGES.md`:
 
-- Pull the stack array out of `task_t` into an external user-supplied buffer, same pattern as the queue's buffer
+- Pull the stack array out of `task_t` into an external user-supplied buffer, same pattern as the queue's buffer (done — now being replaced by a kernel-carved stack pool, see `FUTURECHANGES.md`)
 - Sizing macros so users don't have to hand-compute queue capacity/item_size or stack sizing
+- Section-placement macros so kernel-private static storage can't silently land in the wrong memory region
 - Per-port static struct sizes instead of one shared size, since AVR and M7 `task_t` fields differ enough that a shared constant wastes space on one arch or the other
 
 ### Beyond the Kernel
@@ -96,3 +99,4 @@ Documenting as I go. Debugging write-ups, before/after bug demos, design notes, 
 
 - This is an RTOS kernel, not a general-purpose OS kernel. Real-time scheduling and sync primitives for embedded targets, not process isolation or virtual memory.
 - No HAL, no Arduino abstraction. Drivers and kernel code written directly against datasheets and reference manual.
+- On Cortex-M7, tasks run unprivileged; the MPU and an SVC-gated privilege boundary are the actual isolation mechanism, not a convention. See `ARCHITECTURE.md`.

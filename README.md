@@ -25,14 +25,16 @@ Really it comes down to two things:
 - Mutexes with priority inheritance, with proper multi-mutex support (releasing one mutex falls back to the max of base priority and any remaining held-mutex boosts, not a flat reset)
 - Semaphores: no ownership, no inheritance, priority-ordered wait list, direct handoff on signal instead of bump-then-drain
 - Queue: ring buffer with separate send/receive wait lists, working
+- MPU-based unprivileged task isolation on Cortex-M7: tasks run unprivileged by default, SVC is the sole path to raise privilege, a sliding per-task stack region reprograms on every context switch
+- Stack overflow detection on Cortex-M7 as a side effect of the isolation model: an unprivileged task's stack region is its only window into DTCM, so overflowing it hits a no-access region and faults immediately instead of silently corrupting a neighbor. Not present on AVR, no hardware to support it there.
 - AVR (ATmega328P) done, Cortex-M7 (NUCLEO-F767ZI) context switching done, sync primitives being ported
 
 ## Platforms
 
 | Platform | Architecture | Status |
 |---|---|---|
-| ATmega328P | AVR | Scheduler, context switching, mutexes, semaphores, queues all working |
-| NUCLEO-F767ZI | ARM Cortex-M7 | Scheduler, context switching, mutexes, semaphores, queues all working; MPU-based unprivileged task isolation in progress |
+| ATmega328P | AVR | Scheduler, context switching, mutexes, semaphores, queues all working. No MPU, no memory protection, no stack overflow detection. |
+| NUCLEO-F767ZI | ARM Cortex-M7 | Scheduler, context switching, mutexes, semaphores, queues all working. MPU-based unprivileged task isolation working, with stack overflow detection for unprivileged tasks as a byproduct. |
 
 ## Recent Bugs
 
@@ -57,8 +59,9 @@ Queue is now working: fixed the head/tail wraparound math, the byte-vs-item coun
 - ~~Mutexes with priority inheritance (ported and expanded)~~
 - ~~Semaphores~~
 - ~~Queues~~
+- ~~MPU-based task isolation: unprivileged tasks, sliding active-task region, SVC as the sole privilege boundary~~ (see `ARCHITECTURE.md`)
+- ~~Stack overflow detection for unprivileged tasks~~ (a consequence of the isolation model, not a separate mechanism)
 - Task delays
-- MPU-based task isolation (in progress, unprivileged tasks, sliding active-task region, SVC as the sole privilege boundary; see `ARCHITECTURE.md`)
 - SVC syscall interface, and routing existing kernel helpers (`task_sleep`, `set_priority`, mutex/semaphore/queue ops) through it now that unprivileged tasks can't reach kernel state directly
 - Error handling and timeouts
 
@@ -77,9 +80,9 @@ Timeline's flexible on these, depth matters more than speed:
 
 - Dynamic task allocation
 - Static vs dynamic memory allocation schemes, so I can actually mess with allocator design instead of committing to one approach
-- Stack overflow detection (guard patterns or MPU guard regions)
-- Stack high-water-mark / usage profiling
 - Tickless idle / low-power mode
+
+Dropped for now: stack high-water-mark / usage profiling. Not worth the time against everything else on the list. Might revisit if there's free time later.
 
 ### Planned Refactors
 Tracked in `FUTURECHANGES.md`:
@@ -100,4 +103,5 @@ Documenting as I go. Debugging write-ups, before/after bug demos, design notes, 
 
 - This is an RTOS kernel, not a general-purpose OS kernel. Real-time scheduling and sync primitives for embedded targets, not process isolation or virtual memory.
 - No HAL, no Arduino abstraction. Drivers and kernel code written directly against datasheets and reference manual.
-- On Cortex-M7, tasks run unprivileged; the MPU and an SVC-gated privilege boundary are the actual isolation mechanism, not a convention. See `ARCHITECTURE.md`.
+- On Cortex-M7, tasks run unprivileged; the MPU and an SVC-gated privilege boundary are the actual isolation mechanism, not a convention. Stack overflow detection for unprivileged tasks falls out of that same boundary rather than a separate guard region. See `ARCHITECTURE.md`.
+- No stack overflow detection on AVR. There's no MPU or equivalent protection hardware on the 328P, so it would need a software canary/guard pattern checked on switch, which hasn't been added.

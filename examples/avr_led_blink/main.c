@@ -1,5 +1,4 @@
-#include "fleurr/scheduler.h"
-#include "fleurr/task.h"
+#include "fleurr/fleurr.h"
 #include <avr/io.h>
 #include <stddef.h>
 

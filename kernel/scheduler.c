@@ -26,23 +26,18 @@ static struct scheduler scheduler = {.heads = {0},
                                      .tick_period_ms = 0};
 
 void *store_and_pop_stack_pointer(void *stack_address) {
-  if (scheduler.current_task != NULL) {
-    scheduler.current_task->stack_pointer = stack_address;
+  task_handle_t out = scheduler.current_task;
 
-    uint32_t control;
-    __asm volatile("mrs %0, control" : "=r"(control));
-    scheduler.current_task->priv = control & 0x1UL;
-
-    // Can only be readded if running
-    if (scheduler.current_task->state == TASK_RUNNING) {
-      append_ready_task(scheduler.current_task);
+  if (out != NULL) {
+    out->stack_pointer = stack_address;
+    if (out->state == TASK_RUNNING) {
+      append_ready_task(out);
     }
   }
 
   choose_ready_task();
-  port_apply_active_task_region(scheduler.current_task);
-  port_restore_priv();
-  return (void *)(scheduler.current_task->stack_pointer);
+  port_context_switch(out, scheduler.current_task);
+  return scheduler.current_task->stack_pointer;
 }
 
 void scheduler_start(uint32_t time_ms) {

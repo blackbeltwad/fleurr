@@ -7,7 +7,6 @@
 // Arch-specific interface that kernel/*.c calls into. Keeps
 // kernel/scheduler.c free of #ifdefs for arch-specific behavior.
 
-#include "task_internal.h"
 #include <stdint.h>
 
 void port_start_first_task(void);
@@ -18,10 +17,15 @@ void port_init_stack_frame(uint8_t **stack_pointer, void (*entry)(void *),
 uint8_t port_enter_critical(void);
 void port_exit_critical(uint8_t old_state);
 fleurr_status_t static inline port_mpu_configuration(task_handle_t this_task,
-                                                     size_t capacity){};
+                                                     size_t capacity) {
+  return FLEURR_OK;
+};
 void static inline port_apply_active_task_region(task_handle_t this_task){};
-static inline void port_restore_priv() {};
-static inline void fleurr_drop_priv() {};
-static inline void fleurr_raise_priv() {};
-#
+void static inline port_restore_priv(){};
+void static inline fleurr_drop_priv(){};
+void static inline fleurr_raise_priv(){};
+static inline void port_context_switch(task_handle_t out, task_handle_t in) {
+  (void)out;
+  (void)in;
+}
 #endif // FLEURR_PORT_AVR_ATMEGA328P_H

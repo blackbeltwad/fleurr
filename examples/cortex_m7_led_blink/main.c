@@ -1,6 +1,4 @@
-#include "fleurr/scheduler.h"
-#include "fleurr/task.h"
-#include "port.h"
+#include "fleurr/fleurr.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -59,12 +57,16 @@ int main(void) {
 }
 
 void red_led(void *arg) {
+  uint8_t *ptr = (uint8_t *)0x200004ff;
+  *ptr = 1;
+
   while (1) {
     set_only_pin(4);
   }
 }
 
 void white_led(void *arg) {
+
   while (1) {
     set_only_pin(6);
   }

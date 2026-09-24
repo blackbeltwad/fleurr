@@ -19,6 +19,7 @@ void port_timer_init(uint32_t interval_ms);
 void port_force_context_switch(void); // maps to existing task_yield() body
 void port_init_stack_frame(uint8_t **stack_pointer, void (*entry)(void *),
                            void *arg);
+void port_context_switch(task_handle_t out, task_handle_t in);
 uint8_t port_enter_critical(void);
 void port_exit_critical(uint8_t old_state);
 fleurr_status_t port_mpu_configuration(task_handle_t this_task,

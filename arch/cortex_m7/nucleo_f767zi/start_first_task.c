@@ -8,6 +8,7 @@
 #define SYST_CALIB (*(volatile uint32_t *)0xE000E01C)
 
 void port_start_first_task() {
+  port_apply_active_task_region(get_current_task());
   uint8_t *stack_pointer = get_current_task()->stack_pointer;
 
   stack_pointer += INIT_POP;
@@ -15,6 +16,12 @@ void port_start_first_task() {
   uint32_t function_address = *(uint32_t *)stack_pointer;
   void (*start_function)(void *) = (void *)function_address;
 
+  void *arg = get_current_task()->task_arg;
   SYST_CSR |= (1 << 0);
-  start_function(get_current_task()->task_arg);
+  __asm volatile("mrs r0, control \n\t"
+                 "orr r0, r0, #1 \n\t"
+                 "msr control, r0 \n\t"
+                 "isb \n\t" ::
+                     : "r0");
+  start_function(arg);
 }

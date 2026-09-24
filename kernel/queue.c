@@ -8,6 +8,16 @@
 #include "task_internal.h"
 #include <stdint.h>
 
+void *memcpy(void *dest, const void *src, size_t n) {
+  unsigned char *d = (unsigned char *)dest;
+  const unsigned char *s = (const unsigned char *)src;
+
+  for (size_t i = 0; i < n; i++) {
+    d[i] = s[i];
+  }
+  return dest;
+}
+
 static void copy_to_buffer(queue_handle_t q, const void *item_ptr) {
   memcpy(&(q->buffer[q->head]), item_ptr, q->item_size);
   q->head = (q->head + q->item_size) % (q->capacity * q->item_size);

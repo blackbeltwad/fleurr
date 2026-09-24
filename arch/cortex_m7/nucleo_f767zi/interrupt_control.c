@@ -1,5 +1,6 @@
 #include "fleurr/config.h"
 #include "port.h"
+#include "svc.h"
 #include <stdint.h>
 
 uint8_t port_enter_critical() {
@@ -19,4 +20,5 @@ void port_exit_critical(uint8_t old_state) {
                    :
                    : "r"(old_state)
                    : "memory");
+  port_restore_priv();
 }

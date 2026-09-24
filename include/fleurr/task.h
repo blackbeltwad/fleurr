@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "status.h"
+#include <stddef.h>
 #include <stdint.h>
 
 // Opaque pointer
@@ -17,7 +18,8 @@ typedef struct {
 fleurr_status_t task_create(task_handle_t *out, void (*entry)(void *),
                             uint8_t priority, void *arg);
 
-fleurr_status_t task_create_static(task_handle_t *out, void (*entry)(void *),
+fleurr_status_t task_create_static(task_handle_t *out, uint8_t *buffer,
+                                   size_t capacity, void (*entry)(void *),
                                    uint8_t priority, void *arg,
                                    task_static_t *storage);
 

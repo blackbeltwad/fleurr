@@ -1,5 +1,4 @@
-#include "fleurr/scheduler.h"
-#include "fleurr/task.h"
+#include "fleurr/fleurr.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -20,9 +19,19 @@ void set_only_pin(uint8_t pin);
 #define GPIOD_MODER (*(volatile uint32_t *)(GPIOD_BASE + 0x00))
 #define GPIOD_ODR (*(volatile uint32_t *)(GPIOD_BASE + 0x14))
 
-static task_static_t task_a_storage;
-static task_static_t task_b_storage;
-static task_static_t task_c_storage;
+// IM going to need do put this in like MACROS or something this is way too
+// messy in DTCM
+__attribute__((section(".dtcm_bss"))) static task_static_t task_a_storage;
+__attribute__((section(".dtcm_bss"))) static task_static_t task_b_storage;
+__attribute__((section(".dtcm_bss"))) static task_static_t task_c_storage;
+
+// Also in DTCM
+__attribute__((section(".dtcm_bss"),
+               aligned(256))) static uint8_t a_buffer[256];
+__attribute__((section(".dtcm_bss"),
+               aligned(256))) static uint8_t b_buffer[256];
+__attribute__((section(".dtcm_bss"),
+               aligned(256))) static uint8_t c_buffer[256];
 
 int main(void) {
 
@@ -35,9 +44,12 @@ int main(void) {
   task_handle_t task_b;
   task_handle_t task_c;
 
-  task_create_static(&task_a, &red_led, 1, NULL, &task_a_storage);
-  task_create_static(&task_b, &white_led, 1, NULL, &task_b_storage);
-  task_create_static(&task_c, &blue_led, 1, NULL, &task_c_storage);
+  task_create_static(&task_a, a_buffer, 256, &red_led, 1, NULL,
+                     &task_a_storage);
+  task_create_static(&task_b, b_buffer, 256, &white_led, 1, NULL,
+                     &task_b_storage);
+  task_create_static(&task_c, c_buffer, 256, &blue_led, 1, NULL,
+                     &task_c_storage);
 
   scheduler_start(200); // never returns
   while (1) {
@@ -45,12 +57,16 @@ int main(void) {
 }
 
 void red_led(void *arg) {
+  uint8_t *ptr = (uint8_t *)0x200004ff;
+  *ptr = 1;
+
   while (1) {
     set_only_pin(4);
   }
 }
 
 void white_led(void *arg) {
+
   while (1) {
     set_only_pin(6);
   }
@@ -63,6 +79,8 @@ void blue_led(void *arg) {
 }
 
 void set_only_pin(uint8_t pin) {
+  fleurr_raise_priv();
   uint32_t mask = (1U << 4) | (1U << 5) | (1U << 6);
   GPIOD_ODR = (GPIOD_ODR & ~mask) | (1U << pin);
+  fleurr_drop_priv();
 }

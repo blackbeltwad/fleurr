@@ -13,13 +13,15 @@
 //   - support both dynamic (task_create) and static (task_create_static)
 //     allocation paths, per docs/ARCHITECTURE.md
 
-fleurr_status_t task_create_static(task_handle_t *out, void (*entry)(void *),
+fleurr_status_t task_create_static(task_handle_t *out, uint8_t *buffer,
+                                   size_t capacity, void (*entry)(void *),
                                    uint8_t priority, void *arg,
                                    task_static_t *storage) {
 
   task_t *this_task = (task_t *)(storage);
   *out = this_task;
-  this_task->stack_pointer = &this_task->stack[MAX_SIZE - 1];
+  this_task->stack = buffer;
+  this_task->stack_pointer = &this_task->stack[capacity - 1];
   this_task->stack[0] = 0xFF;
 
   this_task->priority = priority;
@@ -27,8 +29,13 @@ fleurr_status_t task_create_static(task_handle_t *out, void (*entry)(void *),
   this_task->state = TASK_READY;
   this_task->task_arg = arg;
   this_task->blocked_on = NULL;
-
+  this_task->priv = 1; // unpriv
   port_init_stack_frame(&this_task->stack_pointer, entry, arg);
+  fleurr_status_t mpu_status = port_mpu_configuration(this_task, capacity);
+  if (mpu_status != FLEURR_OK) {
+    return mpu_status;
+  }
+
   append_ready_task(this_task);
 
   return FLEURR_OK;

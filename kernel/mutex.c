@@ -35,6 +35,7 @@ fleurr_status_t mutex_create_static(mutex_handle_t *out,
 }
 
 fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex) {
+  fleurr_raise_priv();
   uint8_t old_state = port_enter_critical();
   task_handle_t this_task = get_current_task();
 
@@ -48,11 +49,13 @@ fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex) {
     this_task->held_mutexes_head = mutex;
 
     port_exit_critical(old_state);
+    fleurr_drop_priv();
     return FLEURR_OK;
   }
 
   if (mutex->owner == this_task) {
     port_exit_critical(old_state);
+    fleurr_drop_priv();
     return FLEURR_MUTEX_IN_USE;
   }
 
@@ -86,10 +89,12 @@ fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex) {
 
   port_force_context_switch();
   port_exit_critical(old_state);
+  fleurr_drop_priv();
 
   return FLEURR_OK;
 }
 
+// Internal, called only from within fleurr_mutex_lock is alr priv
 void inheritor_protocol(mutex_handle_t mutex) {
   task_handle_t waiter = get_current_task();
   task_handle_t owner = mutex->owner;
@@ -117,11 +122,13 @@ void inheritor_protocol(mutex_handle_t mutex) {
 }
 
 fleurr_status_t fleurr_mutex_unlock(mutex_handle_t mutex) {
+  fleurr_raise_priv();
   uint8_t old_state = port_enter_critical();
   task_handle_t this_task = get_current_task();
 
   if (mutex->owner != this_task) {
     port_exit_critical(old_state);
+    fleurr_drop_priv();
     return FLEURR_MUTEX_NOT_OWNER;
   }
 
@@ -165,6 +172,7 @@ fleurr_status_t fleurr_mutex_unlock(mutex_handle_t mutex) {
 
   port_force_context_switch();
   port_exit_critical(old_state);
+  fleurr_drop_priv();
   return FLEURR_OK;
 }
 

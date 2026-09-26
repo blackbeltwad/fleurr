@@ -67,6 +67,7 @@ fleurr_status_t queue_create_static(queue_handle_t *out, size_t item_size,
 }
 
 fleurr_status_t fleurr_queue_send(const void *item_ptr, queue_handle_t q) {
+  fleurr_raise_priv();
   uint8_t old_state = port_enter_critical();
 
   if (q->count == q->capacity) {
@@ -105,10 +106,12 @@ fleurr_status_t fleurr_queue_send(const void *item_ptr, queue_handle_t q) {
   unblock_head_task(&q->receive_wait_head, &q->receive_wait_tail);
 
   port_exit_critical(old_state);
+  fleurr_drop_priv();
   return FLEURR_OK;
 }
 
 fleurr_status_t fleurr_queue_receive(queue_handle_t q, void *receive_buffer) {
+  fleurr_raise_priv();
   uint8_t old_state = port_enter_critical();
 
   if (q->count == 0) {
@@ -147,5 +150,6 @@ fleurr_status_t fleurr_queue_receive(queue_handle_t q, void *receive_buffer) {
   unblock_head_task(&q->send_wait_head, &q->send_wait_tail);
 
   port_exit_critical(old_state);
+  fleurr_drop_priv();
   return FLEURR_OK;
 }

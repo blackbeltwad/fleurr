@@ -39,8 +39,8 @@ The kernel itself is feature-complete for what I set out to build. Scheduler, co
 
 | Platform | Architecture | Status |
 |---|---|---|
-| ATmega328P | AVR | Scheduler, context switching, mutexes, semaphores, queues all working. No MPU, no memory protection, no stack overflow detection. |
-| NUCLEO-F767ZI | ARM Cortex-M7 | Scheduler, context switching[118;1:3u, mutexes, semaphores, queues, timeouts all working. MPU-based unprivileged task isolation working, with stack overflow detection for unprivileged tasks as a byproduct. |
+| ATmega328P | AVR | Scheduler, context switching, mutexes, semaphores, queues all working. No MPU, no memory protection, no stack overflow detection (yet), no timeout support (ill add timeoutless port). |
+| NUCLEO-F767ZI | ARM Cortex-M7 | Scheduler, context switching, mutexes, semaphores, queues, timeouts all working. MPU-based unprivileged task isolation working, with stack overflow detection for unprivileged tasks as a byproduct. |
 
 ## Recent Bugs
 

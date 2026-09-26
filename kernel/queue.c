@@ -41,6 +41,9 @@ static void unblock_head_task(task_handle_t *head, task_handle_t *tail) {
     }
     chosen->next = NULL;
     chosen->prev = NULL;
+    chosen->blocked_on = NULL;
+    chosen->wait_kind = WAIT_NONE;
+    cancel_deadline_if_any(chosen);
     append_ready_task(chosen);
   }
 }
@@ -66,14 +69,24 @@ fleurr_status_t queue_create_static(queue_handle_t *out, size_t item_size,
   return FLEURR_OK;
 }
 
-fleurr_status_t fleurr_queue_send(const void *item_ptr, queue_handle_t q) {
+fleurr_status_t fleurr_queue_send(const void *item_ptr, queue_handle_t q,
+                                  uint32_t timeout_ms) {
   fleurr_raise_priv();
   uint8_t old_state = port_enter_critical();
 
   if (q->count == q->capacity) {
+    if (timeout_ms == 0) {
+      port_exit_critical(old_state);
+      fleurr_drop_priv();
+      return FLEURR_ERR_TIMEOUT;
+    }
+
     task_handle_t this_task = get_current_task();
     remove_ready_task(this_task);
     this_task->state = TASK_BLOCKED;
+    this_task->blocked_on = q;
+    this_task->wait_kind = WAIT_QUEUE_SEND;
+    this_task->timed_out = 0;
 
     task_handle_t iter = q->send_wait_head;
     task_handle_t prev = NULL;
@@ -96,8 +109,21 @@ fleurr_status_t fleurr_queue_send(const void *item_ptr, queue_handle_t q) {
       iter->prev = this_task;
     }
 
+    if (timeout_ms != FLEURR_WAIT_FOREVER) {
+      deadline_list_append(this_task, timeout_ms);
+      this_task->has_deadline = 1;
+    } else {
+      this_task->has_deadline = 0;
+    }
+
     port_force_context_switch();
     port_exit_critical(old_state);
+
+    if (this_task->timed_out) {
+      this_task->timed_out = 0;
+      fleurr_drop_priv();
+      return FLEURR_ERR_TIMEOUT;
+    }
 
     old_state = port_enter_critical();
   }
@@ -110,14 +136,24 @@ fleurr_status_t fleurr_queue_send(const void *item_ptr, queue_handle_t q) {
   return FLEURR_OK;
 }
 
-fleurr_status_t fleurr_queue_receive(queue_handle_t q, void *receive_buffer) {
+fleurr_status_t fleurr_queue_receive(queue_handle_t q, void *receive_buffer,
+                                     uint32_t timeout_ms) {
   fleurr_raise_priv();
   uint8_t old_state = port_enter_critical();
 
   if (q->count == 0) {
+    if (timeout_ms == 0) {
+      port_exit_critical(old_state);
+      fleurr_drop_priv();
+      return FLEURR_ERR_TIMEOUT;
+    }
+
     task_handle_t this_task = get_current_task();
     remove_ready_task(this_task);
     this_task->state = TASK_BLOCKED;
+    this_task->blocked_on = q;
+    this_task->wait_kind = WAIT_QUEUE_RECEIVE;
+    this_task->timed_out = 0;
 
     task_handle_t iter = q->receive_wait_head;
     task_handle_t prev = NULL;
@@ -140,8 +176,21 @@ fleurr_status_t fleurr_queue_receive(queue_handle_t q, void *receive_buffer) {
       iter->prev = this_task;
     }
 
+    if (timeout_ms != FLEURR_WAIT_FOREVER) {
+      deadline_list_append(this_task, timeout_ms);
+      this_task->has_deadline = 1;
+    } else {
+      this_task->has_deadline = 0;
+    }
+
     port_force_context_switch();
     port_exit_critical(old_state);
+
+    if (this_task->timed_out) {
+      this_task->timed_out = 0;
+      fleurr_drop_priv();
+      return FLEURR_ERR_TIMEOUT;
+    }
 
     old_state = port_enter_critical();
   }

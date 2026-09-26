@@ -21,7 +21,7 @@ fleurr_status_t static inline port_mpu_configuration(task_handle_t this_task,
   return FLEURR_OK;
 };
 void static inline port_apply_active_task_region(task_handle_t this_task){};
-void static inline port_restore_priv(){};
+void static inline port_restore_priv(task_handle_t task){};
 void static inline fleurr_drop_priv(){};
 void static inline fleurr_raise_priv(){};
 static inline void port_context_switch(task_handle_t out, task_handle_t in) {

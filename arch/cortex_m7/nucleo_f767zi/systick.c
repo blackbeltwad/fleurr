@@ -23,4 +23,5 @@ void port_timer_init(uint32_t interval_ms) {
 void SysTick_Handler(void) {
   ICSR |= (1UL << 28); // Set PENSV pending bit
   update_sleep_timer();
+  update_deadline_timer();
 }

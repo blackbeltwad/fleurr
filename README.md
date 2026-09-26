@@ -17,6 +17,10 @@ Really it comes down to two things:
 - Memory management. Stack layout, allocation strategies, tradeoffs between them. Not something a library just handles for you.
 - The computer itself. What the CPU is actually doing during an interrupt or a context switch or a memory access, not a black box.
 
+## FLEURR CORE: DONE
+
+The kernel itself is feature-complete for what I set out to build. Scheduler, context switching, sync primitives, timeouts, and MPU-based task isolation on Cortex-M7 are all working. From here, the work shifts to building things on top of it (drivers, the flagship ELF loader, the video series) rather than on the kernel itself. Task delays are already covered by `task_sleep`, in the kernel since early on, not a separate feature to add.
+
 ## Current Features
 
 - Preemptive priority scheduling on a priority-bucketed ready queue: per-priority intrusive doubly-linked lists, bitmap + CLZ for O(1) highest-priority lookup, up to 32 priority levels
@@ -27,14 +31,16 @@ Really it comes down to two things:
 - Queue: ring buffer with separate send/receive wait lists, working
 - MPU-based unprivileged task isolation on Cortex-M7: tasks run unprivileged by default, SVC is the sole path to raise privilege, a sliding per-task stack region reprograms on every context switch
 - Stack overflow detection on Cortex-M7 as a side effect of the isolation model: an unprivileged task's stack region is its only window into DTCM, so overflowing it hits a no-access region and faults immediately instead of silently corrupting a neighbor. Not present on AVR, no hardware to support it there.
-- AVR (ATmega328P) done, Cortex-M7 (NUCLEO-F767ZI) context switching done, sync primitives being ported
+- Kernel helpers (`task_sleep`, `set_priority`, mutex/semaphore/queue operations) route through the raise/drop-privilege boundary so unprivileged task code can still reach kernel state without a full syscall dispatch table
+- Timeouts on mutex lock, semaphore wait, and queue send/receive: a separate deadline list runs alongside each primitive's normal wait list, so a task can be waiting and tracked for expiry at once. Whichever happens first (real event or timeout) wins and unwinds the other. Returns `FLEURR_ERR_TIMEOUT` on expiry
+- AVR (ATmega328P) done, Cortex-M7 (NUCLEO-F767ZI) done
 
 ## Platforms
 
 | Platform | Architecture | Status |
 |---|---|---|
 | ATmega328P | AVR | Scheduler, context switching, mutexes, semaphores, queues all working. No MPU, no memory protection, no stack overflow detection. |
-| NUCLEO-F767ZI | ARM Cortex-M7 | Scheduler, context switching, mutexes, semaphores, queues all working. MPU-based unprivileged task isolation working, with stack overflow detection for unprivileged tasks as a byproduct. |
+| NUCLEO-F767ZI | ARM Cortex-M7 | Scheduler, context switching[118;1:3u, mutexes, semaphores, queues, timeouts all working. MPU-based unprivileged task isolation working, with stack overflow detection for unprivileged tasks as a byproduct. |
 
 ## Recent Bugs
 
@@ -45,6 +51,8 @@ Really it comes down to two things:
 - On the M7 port I never copied `.data` from its load address to its run address, and never zeroed `.bss`. Globals looked fine until they didn't. Anything relying on zero-init or an initial value from flash was just reading garbage RAM.
 - M7 linker script had SRAM1's origin overlapping DTCM's address range. The MPU region built from it rounded down to a base that covered both, so the region meant to grant unprivileged access to `.data`/`.bss` was also granting unprivileged access to all of DTCM: TCBs, stacks, kernel objects. Fixed the origin and carved the overlap back out with the region's SRD (subregion disable) bits.
 - `.dtcm_bss` is declared NOLOAD in the linker script but nothing ever actually zeroed it, unlike `.bss`. Every static object placed there (TCBs, the scheduler struct, task stacks) booted with whatever was already sitting in DTCM instead of a known state. Surfaced as `task->priv` reading garbage on boot and breaking `port_restore_priv`. Added a zero loop for `.dtcm_bss` in `Reset_Handler` next to the existing `.bss` one, and made `task_create_static` set `priv` explicitly instead of relying on zero-fill for that field.
+- `set_priority` wasn't cycling a ready task out of its old priority bucket and into the new one when its priority changed, leaving the ready-queue's bitmap and bucket contents out of sync with the task's actual priority. Fixed to match the same remove/append pattern the mutex unlock path already used correctly.
+- Privilege restore after a context switch was pulling "which task" from an internal scheduler lookup instead of using the task explicitly handed to it, which only happened to be correct because of call ordering elsewhere. Fixed to take the task as an explicit parameter instead of reaching for shared state implicitly.
 
 Multi-task context switching now works on both AVR and Cortex-M7.
 
@@ -52,7 +60,7 @@ Queue is now working: fixed the head/tail wraparound math, the byte-vs-item coun
 
 ## Roadmap
 
-### RTOS Core (Cortex-M7 port)
+### RTOS Core (Cortex-M7 port), done
 - ~~ARM context switching via SysTick and PendSV~~
 - ~~Runs on PSP from reset~~
 - ~~EXC_RETURN handled in the PendSV context switch~~
@@ -61,9 +69,13 @@ Queue is now working: fixed the head/tail wraparound math, the byte-vs-item coun
 - ~~Queues~~
 - ~~MPU-based task isolation: unprivileged tasks, sliding active-task region, SVC as the sole privilege boundary~~ (see `ARCHITECTURE.md`)
 - ~~Stack overflow detection for unprivileged tasks~~ (a consequence of the isolation model, not a separate mechanism)
-- Task delays
-- SVC syscall interface, and routing existing kernel helpers (`task_sleep`, `set_priority`, mutex/semaphore/queue ops) through it now that unprivileged tasks can't reach kernel state directly
-- Error handling and timeouts
+- ~~Routing kernel helpers (`task_sleep`, `set_priority`, mutex/semaphore/queue ops) through the raise/drop-privilege boundary~~
+- ~~Timeouts on mutex lock, semaphore wait, queue send/receive~~
+- ~~Task delays~~ (`task_sleep`, already in from earlier, not a separate item)
+
+### Now: building on top of the kernel
+
+With core done, next work is drivers and the flagship project, not the scheduler/sync layer itself.
 
 ### Drivers (interrupt-driven, not polling)
 - UART
@@ -78,6 +90,7 @@ Queue is now working: fixed the head/tail wraparound math, the byte-vs-item coun
 ### Later
 Timeline's flexible on these, depth matters more than speed:
 
+- Full SVC syscall dispatch (numbered syscalls, not just raise/drop), needed for the flagship ELF loader's untrusted-caller syscall ABI, not for the kernel's own helpers, which don't need it
 - Dynamic task allocation
 - Static vs dynamic memory allocation schemes, so I can actually mess with allocator design instead of committing to one approach
 - Tickless idle / low-power mode

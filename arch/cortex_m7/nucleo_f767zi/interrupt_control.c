@@ -20,5 +20,5 @@ void port_exit_critical(uint8_t old_state) {
                    :
                    : "r"(old_state)
                    : "memory");
-  port_restore_priv();
+  port_restore_priv(get_current_task());
 }

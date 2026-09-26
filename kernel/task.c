@@ -7,12 +7,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// TODO: move existing task_create / task_yield / task_block / task_unblock /
-// task_sleep / set_priority / get_current_task bodies here, adapted to:
-//   - return fleurr_status_t instead of void where they can fail
-//   - support both dynamic (task_create) and static (task_create_static)
-//     allocation paths, per docs/ARCHITECTURE.md
-
 fleurr_status_t task_create_static(task_handle_t *out, uint8_t *buffer,
                                    size_t capacity, void (*entry)(void *),
                                    uint8_t priority, void *arg,
@@ -29,6 +23,10 @@ fleurr_status_t task_create_static(task_handle_t *out, uint8_t *buffer,
   this_task->state = TASK_READY;
   this_task->task_arg = arg;
   this_task->blocked_on = NULL;
+  this_task->wait_kind = WAIT_NONE;
+  this_task->has_deadline = 0;
+  this_task->timed_out = 0;
+  this_task->timeout_remaining = 0;
   this_task->priv = 1; // unpriv
   port_init_stack_frame(&this_task->stack_pointer, entry, arg);
   fleurr_status_t mpu_status = port_mpu_configuration(this_task, capacity);
@@ -40,6 +38,7 @@ fleurr_status_t task_create_static(task_handle_t *out, uint8_t *buffer,
 
   return FLEURR_OK;
 }
+
 void task_yield() {
   fleurr_raise_priv();
   port_force_context_switch();
@@ -79,7 +78,7 @@ void task_sleep(uint32_t time_ms) {
 void set_priority(task_handle_t task, uint8_t priority) {
   fleurr_raise_priv();
   uint8_t old_state = port_enter_critical();
-  task->priority = priority;
+
   if (task->state == TASK_READY) {
     remove_ready_task(task);
     task->priority = priority;
@@ -87,6 +86,7 @@ void set_priority(task_handle_t task, uint8_t priority) {
   } else {
     task->priority = priority;
   }
+
   port_exit_critical(old_state);
   fleurr_drop_priv();
 }

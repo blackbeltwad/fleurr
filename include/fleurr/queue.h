@@ -3,7 +3,6 @@
 #include "status.h"
 #include <stddef.h>
 #include <stdint.h>
-// Not yet implemented — placeholder.
 
 typedef struct queue queue_t;
 typedef queue_t *queue_handle_t;
@@ -17,5 +16,10 @@ typedef struct {
 fleurr_status_t queue_create_static(queue_handle_t *out, size_t item_size,
                                     size_t capacity, queue_static_t *storage,
                                     uint8_t *buffer);
+
+fleurr_status_t fleurr_queue_send(const void *item_ptr, queue_handle_t q,
+                                  uint32_t timeout_ms);
+fleurr_status_t fleurr_queue_receive(queue_handle_t q, void *receive_buffer,
+                                     uint32_t timeout_ms);
 
 #endif // FLEURR_QUEUE_H

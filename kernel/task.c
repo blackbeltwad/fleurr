@@ -76,18 +76,17 @@ void task_sleep(uint32_t time_ms) {
   fleurr_drop_priv();
 }
 
-/* NOTE, unrelated to privilege wrapping: if `task` is currently TASK_READY,
- * changing ->priority in place without a remove_ready_task/append_ready_task
- * cycle leaves it in its OLD priority bucket while the field says otherwise
- * -- the bucketed ready queue's bitmap and bucket contents go out of sync
- * with the task's actual priority. fleurr_mutex_unlock's recompute_priority
- * path already does this correctly (see the remove/append dance there).
- * This looks like a real, separate bug -- flagging, not fixing, since it's
- * outside what was asked here. */
 void set_priority(task_handle_t task, uint8_t priority) {
   fleurr_raise_priv();
   uint8_t old_state = port_enter_critical();
   task->priority = priority;
+  if (task->state == TASK_READY) {
+    remove_ready_task(task);
+    task->priority = priority;
+    append_ready_task(task);
+  } else {
+    task->priority = priority;
+  }
   port_exit_critical(old_state);
   fleurr_drop_priv();
 }

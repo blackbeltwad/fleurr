@@ -1,7 +1,9 @@
 #include "fleurr/scheduler.h"
+#include "fleurr/queue.h"
 #include "fleurr/task.h"
 #include "port.h"
 #include "scheduler_internal.h"
+#include "sync_internal.h"
 #include "task_internal.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -15,14 +17,14 @@ void sleep_list_append(task_handle_t this_task);
 void sleep_list_remove(task_handle_t this_task);
 void remove_ready_task(task_handle_t this_task);
 
-// The scheduler control block actually runs in SRAM1 and not DTCM which is NO
-// ACCESS
 static struct scheduler scheduler = {.heads = {0},
                                      .tails = {0},
                                      .current_task = NULL,
                                      .ready_bitmap = 0,
                                      .sleep_head = NULL,
                                      .sleep_tail = NULL,
+                                     .deadline_head = NULL,
+                                     .deadline_tail = NULL,
                                      .tick_period_ms = 0};
 
 void *store_and_pop_stack_pointer(void *stack_address) {
@@ -93,6 +95,105 @@ void update_sleep_timer(void) {
   }
 }
 
+static void generic_list_remove(task_handle_t task, task_handle_t *head,
+                                task_handle_t *tail) {
+  if (task->prev != NULL) {
+    task->prev->next = task->next;
+  } else {
+    *head = task->next;
+  }
+  if (task->next != NULL) {
+    task->next->prev = task->prev;
+  } else {
+    *tail = task->prev;
+  }
+  task->next = NULL;
+  task->prev = NULL;
+}
+
+static void remove_from_wait_list(task_handle_t task) {
+  switch (task->wait_kind) {
+  case WAIT_MUTEX: {
+    mutex_handle_t m = (mutex_handle_t)task->blocked_on;
+    generic_list_remove(task, &m->block_head, &m->block_tail);
+    break;
+  }
+  case WAIT_SEM: {
+    sem_handle_t s = (sem_handle_t)task->blocked_on;
+    generic_list_remove(task, &s->wait_head, &s->wait_tail);
+    break;
+  }
+  case WAIT_QUEUE_SEND: {
+    queue_handle_t q = (queue_handle_t)task->blocked_on;
+    generic_list_remove(task, &q->send_wait_head, &q->send_wait_tail);
+    break;
+  }
+  case WAIT_QUEUE_RECEIVE: {
+    queue_handle_t q = (queue_handle_t)task->blocked_on;
+    generic_list_remove(task, &q->receive_wait_head, &q->receive_wait_tail);
+    break;
+  }
+  case WAIT_NONE:
+  default:
+    break;
+  }
+  task->blocked_on = NULL;
+  task->wait_kind = WAIT_NONE;
+}
+
+void deadline_list_append(task_handle_t this_task, uint32_t timeout_ms) {
+  this_task->timeout_remaining = timeout_ms;
+  this_task->timeout_next = NULL;
+  this_task->timeout_prev = scheduler.deadline_tail;
+  if (scheduler.deadline_tail != NULL) {
+    scheduler.deadline_tail->timeout_next = this_task;
+  } else {
+    scheduler.deadline_head = this_task;
+  }
+  scheduler.deadline_tail = this_task;
+}
+
+static void deadline_list_remove(task_handle_t task) {
+  if (task->timeout_prev != NULL) {
+    task->timeout_prev->timeout_next = task->timeout_next;
+  } else {
+    scheduler.deadline_head = task->timeout_next;
+  }
+  if (task->timeout_next != NULL) {
+    task->timeout_next->timeout_prev = task->timeout_prev;
+  } else {
+    scheduler.deadline_tail = task->timeout_prev;
+  }
+  task->timeout_next = NULL;
+  task->timeout_prev = NULL;
+}
+
+void cancel_deadline_if_any(task_handle_t this_task) {
+  if (this_task->has_deadline) {
+    deadline_list_remove(this_task);
+    this_task->has_deadline = 0;
+  }
+}
+
+void update_deadline_timer(void) {
+  task_handle_t task = scheduler.deadline_head;
+  while (task != NULL) {
+    task_handle_t next_task = task->timeout_next;
+
+    if (task->timeout_remaining <= scheduler.tick_period_ms) {
+      deadline_list_remove(task);
+      task->has_deadline = 0;
+      remove_from_wait_list(task);
+      task->timed_out = 1;
+      append_ready_task(task); /* sets state = TASK_READY internally */
+    } else {
+      task->timeout_remaining -= scheduler.tick_period_ms;
+    }
+
+    task = next_task;
+  }
+}
+
 task_handle_t get_current_task(void) { return scheduler.current_task; }
 
 void append_ready_task(task_handle_t this_task) {
@@ -136,6 +237,7 @@ void remove_ready_task(task_handle_t this_task) {
 }
 
 void choose_ready_task(void) {
+
   if (scheduler.ready_bitmap == 32) {
     // IDLE TASK;
     return;

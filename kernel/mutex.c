@@ -34,7 +34,8 @@ fleurr_status_t mutex_create_static(mutex_handle_t *out,
   return FLEURR_OK;
 }
 
-fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex) {
+fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex, uint32_t timeout_ms) {
+  fleurr_raise_priv();
   uint8_t old_state = port_enter_critical();
   task_handle_t this_task = get_current_task();
 
@@ -48,17 +49,27 @@ fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex) {
     this_task->held_mutexes_head = mutex;
 
     port_exit_critical(old_state);
+    fleurr_drop_priv();
     return FLEURR_OK;
   }
 
   if (mutex->owner == this_task) {
     port_exit_critical(old_state);
+    fleurr_drop_priv();
     return FLEURR_MUTEX_IN_USE;
+  }
+
+  if (timeout_ms == 0) {
+    port_exit_critical(old_state);
+    fleurr_drop_priv();
+    return FLEURR_ERR_TIMEOUT;
   }
 
   remove_ready_task(this_task);
   this_task->state = TASK_BLOCKED;
   this_task->blocked_on = mutex;
+  this_task->wait_kind = WAIT_MUTEX;
+  this_task->timed_out = 0;
 
   task_handle_t iter = mutex->block_head;
   task_handle_t prev = NULL;
@@ -84,9 +95,21 @@ fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex) {
     inheritor_protocol(mutex);
   }
 
+  if (timeout_ms != FLEURR_WAIT_FOREVER) {
+    deadline_list_append(this_task, timeout_ms);
+    this_task->has_deadline = 1;
+  } else {
+    this_task->has_deadline = 0;
+  }
+
   port_force_context_switch();
   port_exit_critical(old_state);
+  fleurr_drop_priv();
 
+  if (this_task->timed_out) {
+    this_task->timed_out = 0;
+    return FLEURR_ERR_TIMEOUT;
+  }
   return FLEURR_OK;
 }
 
@@ -105,8 +128,8 @@ void inheritor_protocol(mutex_handle_t mutex) {
       break;
     } else if (owner->state == TASK_BLOCKED) {
       owner->priority = waiter->priority;
-      if (owner->blocked_on != NULL) {
-        owner = owner->blocked_on->owner;
+      if (owner->wait_kind == WAIT_MUTEX && owner->blocked_on != NULL) {
+        owner = ((mutex_handle_t)owner->blocked_on)->owner;
       } else {
         break;
       }
@@ -117,11 +140,13 @@ void inheritor_protocol(mutex_handle_t mutex) {
 }
 
 fleurr_status_t fleurr_mutex_unlock(mutex_handle_t mutex) {
+  fleurr_raise_priv();
   uint8_t old_state = port_enter_critical();
   task_handle_t this_task = get_current_task();
 
   if (mutex->owner != this_task) {
     port_exit_critical(old_state);
+    fleurr_drop_priv();
     return FLEURR_MUTEX_NOT_OWNER;
   }
 
@@ -149,6 +174,8 @@ fleurr_status_t fleurr_mutex_unlock(mutex_handle_t mutex) {
     next_owner->next = NULL;
     next_owner->prev = NULL;
     next_owner->blocked_on = NULL;
+    next_owner->wait_kind = WAIT_NONE;
+    cancel_deadline_if_any(next_owner);
 
     mutex->owner = next_owner;
     mutex->owner_next = next_owner->held_mutexes_head;
@@ -165,6 +192,7 @@ fleurr_status_t fleurr_mutex_unlock(mutex_handle_t mutex) {
 
   port_force_context_switch();
   port_exit_critical(old_state);
+  fleurr_drop_priv();
   return FLEURR_OK;
 }
 

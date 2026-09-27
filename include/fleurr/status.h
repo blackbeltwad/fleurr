@@ -8,6 +8,7 @@ typedef enum {
   FLEURR_ERR_LIMIT_REACHED,
   FLEURR_MUTEX_IN_USE,
   FLEURR_MUTEX_NOT_OWNER,
+  FLEURR_ERR_TIMEOUT,
 } fleurr_status_t;
 
 #endif // FLEURR_STATUS_H

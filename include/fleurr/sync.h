@@ -31,11 +31,10 @@ fleurr_status_t mutex_create_static(mutex_handle_t *out,
                                     uint8_t ceiling_priority,
                                     mutex_static_t *storage);
 
-fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex);
+fleurr_status_t fleurr_mutex_lock(mutex_handle_t mutex, uint32_t timeout_ms);
 fleurr_status_t fleurr_mutex_unlock(mutex_handle_t mutex);
 
 // ---- Semaphore ----
-// Not yet implemented — placeholder for API shape.
 
 typedef struct semaphore semaphore_t;
 typedef semaphore_t *sem_handle_t;
@@ -49,5 +48,6 @@ fleurr_status_t sem_create_static(sem_handle_t *out, uint8_t initial_count,
                                   sem_static_t *storage);
 
 fleurr_status_t fleurr_sem_signal(sem_handle_t this_sem);
-fleurr_status_t fleurr_sem_wait(sem_handle_t this_sem);
+fleurr_status_t fleurr_sem_wait(sem_handle_t this_sem, uint32_t timeout_ms);
+
 #endif // FLEURR_SYNC_H

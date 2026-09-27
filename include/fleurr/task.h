@@ -15,6 +15,9 @@ typedef struct {
   uint8_t _reserved[TASK_STATIC_SIZE];
 } task_static_t;
 
+// Pass as timeout_ms to block with no expiry (existing behavior).
+#define FLEURR_WAIT_FOREVER ((uint32_t)0xFFFFFFFFUL)
+
 fleurr_status_t task_create(task_handle_t *out, void (*entry)(void *),
                             uint8_t priority, void *arg);
 

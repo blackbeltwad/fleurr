@@ -25,7 +25,7 @@ void port_exit_critical(uint8_t old_state);
 fleurr_status_t port_mpu_configuration(task_handle_t this_task,
                                        size_t capacity);
 void port_apply_active_task_region(task_handle_t this_task);
-void port_restore_priv();
-void fleurr_drop_priv();
-void fleurr_raise_priv();
+void port_restore_priv(task_handle_t this_task);
+void fleurr_drop_priv(void);
+void fleurr_raise_priv(void);
 #endif // FLEURR_PORT_CORTEX_M7_NUCLEO_F767ZI_H

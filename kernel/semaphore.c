@@ -19,6 +19,7 @@ fleurr_status_t sem_create_static(sem_handle_t *out, uint8_t initial_count,
 }
 
 fleurr_status_t fleurr_sem_signal(sem_handle_t this_sem) {
+  fleurr_raise_priv();
   uint8_t old_state = port_enter_critical();
   if (this_sem->wait_head != NULL) {
     struct task *current = this_sem->wait_head;
@@ -30,6 +31,9 @@ fleurr_status_t fleurr_sem_signal(sem_handle_t this_sem) {
     }
     current->next = NULL;
     current->prev = NULL;
+    current->blocked_on = NULL;
+    current->wait_kind = WAIT_NONE;
+    cancel_deadline_if_any(current);
     current->state = TASK_READY;
     append_ready_task(current);
   } else {
@@ -38,45 +42,70 @@ fleurr_status_t fleurr_sem_signal(sem_handle_t this_sem) {
 
   port_force_context_switch();
   port_exit_critical(old_state);
+  fleurr_drop_priv();
   return FLEURR_OK;
 }
 
-fleurr_status_t fleurr_sem_wait(sem_handle_t this_sem) {
+fleurr_status_t fleurr_sem_wait(sem_handle_t this_sem, uint32_t timeout_ms) {
+  fleurr_raise_priv();
   uint8_t old_state = port_enter_critical();
   struct task *this_task = get_current_task();
 
   if (this_sem->count > 0) {
     this_sem->count--;
     port_exit_critical(old_state);
-    return FLEURR_OK;
-  } else {
-    this_task->state = TASK_BLOCKED;
-    remove_ready_task(this_task);
-
-    struct task *iter = this_sem->wait_head;
-    struct task *prev = NULL;
-
-    while (iter != NULL && this_task->priority <= iter->priority) {
-      prev = iter;
-      iter = iter->next;
-    }
-
-    this_task->prev = prev;
-    this_task->next = iter;
-
-    if (iter == NULL) {
-      this_sem->wait_tail = this_task;
-    } else {
-      iter->prev = this_task;
-    }
-    if (prev == NULL) {
-      this_sem->wait_head = this_task;
-    } else {
-      prev->next = this_task;
-    }
-
-    port_force_context_switch();
-    port_exit_critical(old_state);
+    fleurr_drop_priv();
     return FLEURR_OK;
   }
+
+  if (timeout_ms == 0) {
+    port_exit_critical(old_state);
+    fleurr_drop_priv();
+    return FLEURR_ERR_TIMEOUT;
+  }
+
+  this_task->state = TASK_BLOCKED;
+  this_task->blocked_on = this_sem;
+  this_task->wait_kind = WAIT_SEM;
+  this_task->timed_out = 0;
+  remove_ready_task(this_task);
+
+  struct task *iter = this_sem->wait_head;
+  struct task *prev = NULL;
+
+  while (iter != NULL && this_task->priority <= iter->priority) {
+    prev = iter;
+    iter = iter->next;
+  }
+
+  this_task->prev = prev;
+  this_task->next = iter;
+
+  if (iter == NULL) {
+    this_sem->wait_tail = this_task;
+  } else {
+    iter->prev = this_task;
+  }
+  if (prev == NULL) {
+    this_sem->wait_head = this_task;
+  } else {
+    prev->next = this_task;
+  }
+
+  if (timeout_ms != FLEURR_WAIT_FOREVER) {
+    deadline_list_append(this_task, timeout_ms);
+    this_task->has_deadline = 1;
+  } else {
+    this_task->has_deadline = 0;
+  }
+
+  port_force_context_switch();
+  port_exit_critical(old_state);
+  fleurr_drop_priv();
+
+  if (this_task->timed_out) {
+    this_task->timed_out = 0;
+    return FLEURR_ERR_TIMEOUT;
+  }
+  return FLEURR_OK;
 }
